@@ -1,0 +1,6 @@
+name = Product Edit
+description = Customize product edit form. Adds vendor selection list to products.
+dependencies[] = uc_product
+dependencies[] = pos_stock_management
+package = GGW Custom Modules
+core = 6.x

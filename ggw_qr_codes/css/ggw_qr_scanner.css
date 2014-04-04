@@ -1,0 +1,47 @@
+input.barcode-input {
+	width: 100%;
+}
+.item-list .item {
+	width: 100%;
+	padding: 10px 0;	
+	float: left;
+}
+.item-list .item div {
+	float: left;
+	width: 10%;
+	padding: 1%;
+	min-width: 170px;
+}
+
+.item-list .item div.image {
+	padding: 0;
+}
+.item-list .item div.controls  {
+	width: 21%;
+}
+
+.item-list .item div.controls a {
+	border: 1px solid #EBEBEB;
+	padding: 8px 0;
+	background: #FFF;
+	width: 100%;
+	display: block;
+	text-align: center;
+}
+.item-list .item div.controls a:hover {
+	background: #F3FFCB;
+}
+
+.item-list div.title {
+	width: 20%;
+}
+.item-list .item {
+	background: #FFFEE7;
+	cursor: pointer;
+}
+.item-list .item:nth-child(2n) {
+	background: #E7EEFF;	
+}
+.item-list .item:hover {
+	background: #FFA;	
+}

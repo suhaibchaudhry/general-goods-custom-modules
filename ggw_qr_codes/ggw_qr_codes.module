@@ -1,0 +1,294 @@
+<?php
+/**
+ * Implements hook_menu()
+ */
+function ggw_qr_codes_perm() {
+	return array('generate qr codes');
+}
+function ggw_qr_codes_menu() {
+  $items = array();
+
+  $items['admin/store/qr-codes/list'] = array(
+    'title' => 'Generate Shelf Labels',
+    'description' => 'Generate QR codes for store shelves or individual products.',
+    'page callback' => 'ggw_qr_codes_generate_store',
+	'access arguments' => array('generate qr codes'),
+    'type' => MENU_NORMAL_ITEM,
+    'file' => 'includes/ggw_qr_codes.route.inc'
+  );
+
+  $items['admin/store/qr-codes-tid/%'] = array(
+ 	'title' => 'Generate Shelf Labels',
+    'description' => 'Generate QR codes for store shelves.',
+	'page arguments' => array(3),
+    'page callback' => 'ggw_qr_codes_generate_store_shelf',
+	'access arguments' => array('generate qr codes'),
+    'type' => MENU_CALLBACK,
+    'file' => 'includes/ggw_qr_codes.route.inc'
+  );
+
+  $items['admin/store/qr-codes/%'] = array(
+    'title' => 'Generate QR Codes',
+    'description' => 'Generate QR codes for customer shelves.',
+    'page callback' => 'ggw_qr_codes_generate_user',
+    'page arguments' => array(3),
+	'access arguments' => array('generate qr codes'),
+    'type' => MENU_CALLBACK,
+    'file' => 'includes/ggw_qr_codes.route.inc'
+  );
+
+  $items['admin/store/qr-codes/barcodes-scan'] = array(
+    'title' => 'Scan Product Barcodes',
+    'description' => 'Generate QR codes by scanning barcodes.',
+    'page callback' => 'ggw_qr_codes_scan',
+	'access arguments' => array('generate qr codes'),
+    'type' => MENU_NORMAL_ITEM,
+    'file' => 'includes/ggw_qr_codes.route.inc'
+  );
+  
+  $items['admin/store/qr-codes/item'] = array(
+    'title' => 'RPC Item Details',
+    'description' => 'Gives json details for a given barcode.',
+    'page callback' => 'ggw_qr_codes_item_details',
+    'access arguments' => array('generate qr codes'),
+    'type' => MENU_CALLBACK,
+    'file' => 'includes/ggw_qr_codes.route.inc'
+  );
+
+  $items['admin/store/qr-codes/barcode-update'] = array(
+    'title' => 'RPC Item Details',
+    'description' => 'Gives json details for a given barcode.',
+    'page callback' => 'ggw_qr_codes_update_unit_barcode',
+    'access arguments' => array('generate qr codes'),
+    'type' => MENU_CALLBACK,
+    'file' => 'includes/ggw_qr_codes.route.inc'
+  );
+  
+  return $items;
+}
+
+function ggw_qr_codes_gen_form() {
+	$form = array('#attributes' => array('target' => '_blank'));
+	
+	$form['submit'] = array(
+		'#type' => 'submit',
+		'#value' => 'Generate Labels'
+	);
+	
+	return $form;
+}
+
+function ggw_qr_codes_gen_form_submit($form, $form_state) {
+	$items = array();
+	$items_posted = $form['#post']['item'];
+	//Remove Duplicates
+	//Add Pictures
+	if(is_array($items_posted)) {
+		$items_posted = array_unique($items_posted);
+		$i = 0;
+		foreach($items_posted as $item) {
+			$product = db_fetch_object(db_query("SELECT n.title, up.model FROM node n INNER JOIN uc_products up ON n.vid = up.vid WHERE n.nid = '%d'", $item));
+			$items[$i]['name'] = ggw_qr_codes_truncate($product->title, 35);
+			$items[$i]['barcode'] = $product->model;
+			$i++;
+			
+		}
+	}
+
+	ggw_qr_codes_generate($items, $header, "No products were scanned.");
+}
+
+function ggw_qr_codes_theme_taxonomy_nested_tree($tree) {
+    if (count($tree)) {
+        $output = '<ul class="taxonomy-tree">';
+        foreach ($tree as $term) {
+            $output .= '<li class="taxonomy-term">';
+            $output .= l($term->name, 'admin/store/qr-codes-tid/'.$term->tid, array('attributes' => array('target' => '_blank')));
+            $term->children = taxonomy_get_children($term->tid);
+			if ($term->children) {
+				$output .= ggw_qr_codes_theme_taxonomy_nested_tree($term->children);
+            }
+            $output .= '</li>';
+        }
+        $output .= '</ul>';
+    }
+    return $output;
+}
+
+function ggw_qr_codes_generate($items, $header = '', $no_found_message = '') {
+	//require_once(libraries_get_path('tcpdf') .'/config/lang/eng.php');
+	require_once(libraries_get_path('tcpdf') .'/tcpdf.php');
+	//require_once(libraries_get_path('fpdi') .'/fpdi.php');
+	
+	//module_load_include('inc', 'ggw_qr_codes', 'includes/pdf');
+	
+	$margin = array('left' => .27, 'top' => .5, 'right' => .31);
+	$box = array('w' => 2.625, 'h' => 1, 'margin' => 0);
+	
+	$style = array(
+    	'border' => 0,
+   		'vpadding' => 0.19685,
+    	'hpadding' => 0.19685,
+    	'fgcolor' => array(0,0,0),
+    	'bgcolor' => false, //array(255,255,255)
+    	'module_width' => 3, // width of a single module in points
+    	'module_height' => 3 // height of a single module in points
+	);
+	
+	// initiate PDF
+	$pdf = new TCPDF();
+	//$pdf->SetMargins(PDF_MARGIN_LEFT, 40, PDF_MARGIN_RIGHT);
+	//$pdf->SetAutoPageBreak(true, 40);
+	$pdf->setFontSubsetting(false);
+	
+	$pdf->setTextColor(0, 0, 0);
+	
+	$pdf->setPageUnit('in');
+
+	//$pdf->SetMargins(.27, .5, .31);
+	// add a page
+	$pdf->startPage('P', 'Letter');
+
+	$pdf->setDrawColor(0, 0, 0);
+	$pdf->SetFont("helvetica", "N", 9);
+	
+	if(count($items) > 0) {
+		$i = 0;
+		foreach($items as $item) {
+			$row = floor($i/3);
+			$col = $i%3;
+			
+			if($col == 0) {
+				$pad = 0;
+			} elseif($col == 1) {
+				$pad = 0.11811;	
+			} else {
+				$pad = 0.11811*2;	
+			}
+			
+			$x = $pad+$margin['left']+($col*($box['w']+$box['margin']));
+			$y = 0.03+$margin['top']+($row*$box['h']);
+			
+			
+			$pdf->setPageUnit('mm');
+			$pdf->writeHTMLCell(ggw_qr_codes_InToMM($box['w'])-25, ggw_qr_codes_InToMM($box['h'])-3, ggw_qr_codes_InToMM($x)+25, ggw_qr_codes_InToMM($y)+3, '<strong>'.$item['name'].'</strong>'.'<br />'.'<strong>UPC: </strong>'.$item['barcode'], 0);
+			$pdf->setPageUnit('in');
+			
+			//$pdf->Rect($x, $y, $box['w'], $box['h'], '', 'LTRB', array(0, 0, 0));
+			
+			$pdf->write2DBarcode($item['barcode'], 'QRCODE,L', $x, $y, 0, 0, $style, 'N');
+			
+			$i++;
+			
+			if($i == 30) {
+				$i = 0;
+				
+				$pdf->setPageUnit('mm');
+				$pdf->writeHTMLCell(ggw_qr_codes_InToMM(5)-25, ggw_qr_codes_InToMM(1)-3, 8, 4, '<strong>'.$header.'</strong>', 0);
+				$pdf->setPageUnit('in');
+				
+				$pdf->AddPage();
+			}
+		}
+	} else {
+		$pdf->SetFont("helvetica", "N", 12);
+		$pdf->setPageUnit('mm');
+		$pdf->MultiCell(ggw_qr_codes_InToMM(4.8), 0, $no_found_message, 0, 'C', FALSE, 1, 0, 50);
+		$pdf->setPageUnit('in');
+	}
+
+	$pdf->Output('newpdf.pdf', 'I');	
+}
+
+function ggw_qr_codes_get_cust_prods($uid) {
+	$items = array();
+	$products = db_query("SELECT uop.nid, uop.order_product_id, uop.title, uop.model FROM {uc_order_products} uop INNER JOIN {uc_orders} uo ON uop.order_id = uo.order_id WHERE uo.uid = %d GROUP BY uop.nid", $uid);
+
+	$i = 0;
+	while($product = db_fetch_object($products)) {
+		$items[$i]['name'] = ggw_qr_codes_truncate($product->title, 45);
+		$items[$i]['barcode'] = $product->model;
+		$i++;
+	}
+
+	return $items;
+}
+
+function ggw_qr_codes_get_store_prods($tid) {
+	$items = array();
+	
+	//$products = db_query("SELECT ucp.nid, ucp.model, n.title FROM {uc_products} ucp INNER JOIN {node} n ON n.vid = ucp.vid INNER JOIN {term_node} tn ON tn.vid = n.vid LEFT JOIN {term_hierchy} th ON tn.tid = th.tid WHERE (tn.tid = '%d' OR th.parent = '%d')", $tid);
+	$tids = array($tid);
+	$products = ggw_qr_codes_taxonomy_select_nodes($tids, 'or', 'all');
+	
+	$i = 0;
+	while($product = db_fetch_object($products)) {
+		$model = db_result(db_query("SELECT ucp.model FROM {uc_products} ucp WHERE ucp.nid = '%d'", $product->nid));
+		//if($model == '712199318469') {
+		$items[$i]['name'] = ggw_qr_codes_truncate($product->title, 35);
+		$items[$i]['barcode'] = $model;
+		//}
+		$i++;
+	}
+
+	return $items;
+}
+
+function ggw_qr_codes_truncate($string, $length, $stopanywhere=false) {
+    //truncates a string to a certain char length, stopping on a word if not specified otherwise.
+    if (strlen($string) > $length) {
+        //limit hit!
+        $string = substr($string,0,($length -3));
+        if ($stopanywhere) {
+            //stop anywhere
+            $string .= '...';
+        } else{
+            //stop on a word.
+            $string = substr($string,0,strrpos($string,' ')).'...';
+        }
+    }
+    return stripslashes($string);
+}
+
+function ggw_qr_codes_taxonomy_select_nodes($tids = array(), $operator = 'or', $depth = 0, $order = 'n.sticky DESC, n.created DESC') {
+  if (count($tids) > 0) {
+    // For each term ID, generate an array of descendant term IDs to the right depth.
+    $descendant_tids = array();
+    if ($depth === 'all') {
+      $depth = NULL;
+    }
+    foreach ($tids as $index => $tid) {
+      $term = taxonomy_get_term($tid);
+      $tree = taxonomy_get_tree($term->vid, $tid, -1, $depth);
+      $descendant_tids[] = array_merge(array($tid), array_map('_taxonomy_get_tid_from_term', $tree));
+    }
+
+    if ($operator == 'or') {
+      $args = call_user_func_array('array_merge', $descendant_tids);
+      $placeholders = db_placeholders($args, 'int');
+      $sql = 'SELECT DISTINCT(n.nid), n.sticky, n.title, n.created FROM {node} n INNER JOIN {term_node} tn ON n.vid = tn.vid WHERE tn.tid IN (' . $placeholders . ') AND n.status = 1 ORDER BY ' . $order;
+      $sql_count = 'SELECT COUNT(DISTINCT(n.nid)) FROM {node} n INNER JOIN {term_node} tn ON n.vid = tn.vid WHERE tn.tid IN (' . $placeholders . ') AND n.status = 1';
+    }
+    else {
+      $joins = '';
+      $wheres = '';
+      $args = array();
+      foreach ($descendant_tids as $index => $tids) {
+        $joins .= ' INNER JOIN {term_node} tn' . $index . ' ON n.vid = tn' . $index . '.vid';
+        $wheres .= ' AND tn' . $index . '.tid IN (' . db_placeholders($tids, 'int') . ')';
+        $args = array_merge($args, $tids);
+      }
+      $sql = 'SELECT DISTINCT(n.nid), n.sticky, n.title, n.created FROM {node} n ' . $joins . ' WHERE n.status = 1 ' . $wheres . ' ORDER BY ' . $order;
+      $sql_count = 'SELECT COUNT(DISTINCT(n.nid)) FROM {node} n ' . $joins . ' WHERE n.status = 1 ' . $wheres;
+    }
+    $sql = db_rewrite_sql($sql);
+    $sql_count = db_rewrite_sql($sql_count);
+    $result = db_query($sql, $args);
+  }
+
+  return $result;
+}
+
+function ggw_qr_codes_InToMM($inches) {
+	return $inches/0.0393701;
+}

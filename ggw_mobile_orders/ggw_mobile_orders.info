@@ -1,0 +1,4 @@
+name = GGW Mobile Orders
+description = Produces a dashboard to display and manage mobile orders.
+package = GGW Custom Modules
+core = 6.x

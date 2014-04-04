@@ -1,0 +1,4 @@
+name = Profile Edit
+description = Adds custom features to user profile and registration.
+package = GGW Custom Modules
+core = 6.x

@@ -1,0 +1,4 @@
+name = Mobile Export
+description = Generates a WEB SQL dump of products for offline mobile app.
+package = GGW Custom Modules
+core = 6.x

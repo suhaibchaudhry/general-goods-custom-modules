@@ -1,0 +1,4 @@
+name = Mobile Notify
+description = Send push notification to customer mobile phones.
+package = GGW Custom Modules
+core = 6.x

@@ -1,0 +1,35 @@
+table tr.settled-false {
+	background: #FAAFAF;	
+}
+
+table tr.settled-true {
+	background: #B6F8C3;
+}
+
+table tr.settled-exceeded {
+	background: #FF4040;
+}
+table.user-credits-settlements-table {
+	border-collapse: separate !important;
+	border-spacing: 2px;
+}
+table.user-credits-settlements-table td {
+	padding: 1px 4px;
+	border-spacing: 2px;
+}
+
+table.user-credits-settlements-table th {
+	padding: 0;
+	text-align: center;
+	background: rgba(255, 255, 255, 0.49);
+	padding: 2px;
+	border-color: #fff;
+}
+.user-term-credits-report a.view-settlements {
+	background: #fff;
+	padding: 10px;
+	margin: 5px 0;
+	display: inline-block;
+	font-weight: bold;
+	border-radius: 10px;
+}

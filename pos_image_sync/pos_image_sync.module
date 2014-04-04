@@ -1,0 +1,254 @@
+<?php
+function pos_image_sync_perm() {
+	return array('pos synchronize images');
+}
+
+function pos_image_sync_menu() {
+  $items = array();
+
+  $items['admin/pos-image-sync/list'] = array(
+    'title' => 'Bulk Image Synchronization',
+    'description' => 'Synchronize all images from the file system to the database.',
+    'page callback' => 'pos_image_sync_admin',
+    'access arguments' => array('pos synchronize images'),
+    'type' => MENU_NORMAL_ITEM
+  );
+
+  return $items;
+}
+
+function pos_image_sync_admin() {
+	drupal_add_js(drupal_get_path('module', 'pos_image_sync').'/js/pos_image_sync_copy.js');
+	drupal_add_css(drupal_get_path('module', 'pos_image_sync').'/css/pos_image_sync_copy.css');
+	
+	$dir = file_directory_path().'/bulk-images';
+	if(file_check_directory($dir, FILE_CREATE_DIRECTORY)) {
+		$files = file_scan_directory($dir, '\.(jpg)|(png)|(gif)|(jpeg)|(JPG)|(JPEG)|(PNG)|(GIF)');
+
+		foreach($files as $path => $file) {
+			$new_path = strtolower($file->filename);
+			if($new_path != $file->filename) {
+				rename($file->filename, $new_path);
+				$files[$path]->filename = $new_path;
+			}
+		}
+
+		return pos_image_update_nids($files);
+	} else {
+		return 'Failed to load images, please contact support for troubleshooting.';	
+	}
+}
+
+function pos_image_update_nids($files) {
+	//dpm($files);
+	$header = array(
+ 	 'upc' => 'UPC',
+ 	 'title' => 'Product Name',
+	 'old_image' => 'Previous Image',
+	 'new_image' => 'New Image'
+	);
+	$syned = 0;
+	$unsynced = 0;
+	$total = 0;
+	$table_data = array();
+	$count = 1;
+
+	$options = array();
+	foreach($files as $file) {
+		$product = pos_image_get_nid($file->name, $file->filename);
+		if($product) {
+			//$products[] = $product;
+			//$i = 0;
+			//while($i < 1500) {
+			//$options[$product->nid.'-'.$i] = array(
+			if($product->old_path == $product->new_path) {
+				$syned++;
+			} else {
+				$options[$product->nid.'|'.$product->fid.'|'.$product->new_path] = array(
+					'upc' => $product->model,
+					'title' => l($product->title, 'node/'.$product->nid),
+					'old_image' => theme('imagecache', 'cart', $product->old_path, $product->model),
+					'new_image' => theme('imagecache', 'cart', $product->new_path, $product->model)
+				);
+				
+				$unsynced++;
+			}
+			//$i++;
+			//}
+		} else {
+			$item = array('data' => array('<span class="upc">'.$file->name.'</span><a href="#" class="pos_image_sync_copy">[copy]</a>', theme('imagecache', 'cart', $file->filename, $file->name), ''));
+			$closest = db_fetch_object(db_query("SELECT n.title, up.nid, up.model FROM {uc_products} up INNER JOIN {node} n ON up.nid = n.nid WHERE up.model LIKE '%%%s%%'", $file->name));
+			$item['data'][2] = $closest->model.l($closest->title, 'node/'.$closest->nid).drupal_get_form('pos_image_sync_rename_form_'.$count, $file->filename, $file->name, $closest->model, $count);
+			$table_data[] = $item;
+			$count++;
+		}
+		
+		$total++;
+	}
+
+	$unmatched = ($total-($syned+$unsynced));
+	$content = '<h3>Total Images Found: '.$total.'</h3>';
+	$content .= '<h3>Previously Synced Images: '.$syned.'</h3>';
+	$content .= '<h3>Images Ready for Sync: '.$unsynced.'</h3>';
+	if($unmatched > 0) {
+		$content .= '<h3>Unmatched Images: '.$unmatched.'</h3>';
+		$content .= '<h2>Unmatched Images</h2>';
+		$content .= theme('table', array('Unmatched UPC', 'Preview', 'Closest Match'), $table_data);
+		
+	}
+
+	if($unsynced > 0) {
+		$content .= '<h2>Sync Matched Images</h2>';
+		$content .= drupal_get_form('pos_image_sync_form', $header, $options);
+	}
+	return $content;
+}
+
+function pos_image_sync_rename_form(&$form_state, $full_path, $base_name, $closest_model, $count) {
+	$form = array();
+	$form_state['storage']['full_path'] = $full_path;
+	$form_state['storage']['base_name'] = $base_name;
+	$form_state['storage']['field_name'] = 'new_name_'.$count;
+	
+	$form['new_name_'.$count] = array(
+		'#type' => 'textfield',
+		'#title' => t('New Name'),
+		'#value' => $closest_model,
+		'#required' => true
+	);
+
+	$form['submit_'.$count] = array(
+    	'#type' => 'submit',
+    	'#value' => t('Rename'),
+  	);
+	
+	$form['#validate'] = array('pos_image_sync_rename_form_validate');
+	$form['#submit'] = array('pos_image_sync_rename_form_submit');
+
+	return $form;
+}
+
+function pos_image_sync_forms($form_id, $args) {
+	if(strpos($form_id, 'pos_image_sync_rename_form') !== FALSE) {
+		$forms[$form_id] = array(
+        	'callback' => 'pos_image_sync_rename_form',
+			//'callback arguments' => $args
+        );
+      	return $forms;
+	}
+}
+
+function pos_image_sync_rename_form_validate($form, $form_state) {
+	/*
+	dpm($form);
+	foreach($form as $fname => $val) {
+		if(strpos($fname, 'new_name') !== FALSE) {
+			dpm($fname);
+			$fieldname = $fname;
+			break;
+		}
+	}
+	*/
+	$value = $form['#post'][$form_state['storage']['field_name']];
+	if(empty($value) || strpos($value, '.') !== FALSE) {
+		form_set_error($form_state['storage']['field_name'], 'Please insert a UPC number for image file name. Do not include extensions.');			
+	}
+}
+
+function pos_image_sync_rename_form_submit($form, $form_state) {
+	//dpm($form_state);
+	$newname = $form['#post'][$form_state['storage']['field_name']];
+	$fullpath = $form_state['storage']['full_path'];
+	$newpath = str_replace($form_state['storage']['base_name'], $newname, $fullpath);
+	rename($fullpath, $newpath);
+	drupal_goto('admin/pos-image-sync');
+}
+
+function pos_image_sync_form_submit($form, $form_state) {
+	//dpm($form);
+	//dpm($form_state);
+
+	global $user;
+	
+	foreach($form_state['values']['pos_image_sync_nodes'] as $key => $selection) {
+		if($selection != '0') {
+		  $tokens = split('\|', $key, 3);
+		  
+		  $nid = $tokens[0];
+		  $fid = $tokens[1];
+		  $path = $tokens[2];
+		  
+		  if(empty($fid)) {
+			  db_query("INSERT INTO {files} (uid , filename, filepath, filemime, filesize, status, timestamp) VALUES ('%d', '%s', '%s', '%s', '%d', '1', '%d')", $user->uid, basename($path), $path, file_get_mimetype($path), filesize($path), time());
+			  $fid = db_last_insert_id('files', 'fid');
+			  db_query("REPLACE INTO {content_field_image_cache} (vid, nid, delta, field_image_cache_fid, field_image_cache_list, field_image_cache_data) VALUES ('%d', '%d', '0', '%d', '1', '%s')", $nid, $nid, $fid, 'a:2:{s:3:"alt";s:0:"";s:5:"title";s:0:"";}');
+		  } else {
+			db_query("REPLACE INTO {files} (fid, uid , filename, filepath, filemime, filesize, status, timestamp) VALUES ('%d', '%d', '%s', '%s', '%s', '%d', '1', '%d')", $fid, $user->uid, basename($path), $path, file_get_mimetype($path), filesize($path), time());
+		  	}
+		}
+	}
+
+	drupal_flush_all_caches();
+}
+
+function pos_image_sync_form($form_state, $header, $options) {
+	$form = array();
+	$options = array_slice($options, 0, 500);
+	$form['pos_image_sync_nodes'] = array(
+    	'#type' => 'tableselect',
+    	'#header' => $header,
+    	'#options' => $options,
+    	// Should $options be array(), this will get displayed:
+    	'#empty' => t('No unsynchronized images with matching UPC code in file name found.')
+ 	);
+	
+	//$form['pager'] = array('#value' => theme('pager'));
+  
+  	$form['submit'] = array(
+    	'#type' => 'submit',
+    	'#value' => t('Import Images'),
+  	);
+	
+	return $form;
+}
+
+function pos_image_get_nid($model, $new_path) {
+	$product = db_fetch_object(db_query("SELECT up.model, n.nid, n.title, cfic.field_image_cache_fid, f.fid, f.filepath FROM {uc_products} up INNER JOIN {node} n ON up.nid = n.nid LEFT JOIN {content_field_image_cache} cfic ON n.nid = cfic.nid LEFT JOIN {files} f ON f.fid = cfic.field_image_cache_fid WHERE up.model = '%s'", $model));
+	//dpm(str_replace(array("{", "}"), array("", ""), "SELECT up.model, n.nid, n.title FROM {uc_products} up INNER JOIN {node} n ON up.nid = n.nid LEFT JOIN {content_field_image_cache} cfic ON n.nid = cfic.nid WHERE up.model = '".$model."'"));
+
+	if($product) {
+		if(empty($product->filepath)) {
+			$old_path = file_directory_path().'/notfound.png';
+		} else {
+			$old_path = $product->filepath;
+		}
+
+		return (object)array('model' => $product->model, 'nid' => $product->nid, 'title' => $product->title, 'fid' => $product->fid, 'old_path' => $old_path, 'new_path' => $new_path);
+	}
+	
+	$product = db_fetch_object(db_query("SELECT ctp.field_prod_unit_barcode_value, n.nid, n.title, cfic.field_image_cache_fid, f.fid, f.filepath FROM {uc_products} up INNER JOIN {node} n ON up.nid = n.nid LEFT JOIN {content_field_image_cache} cfic ON n.nid = cfic.nid LEFT JOIN {content_type_product} ctp ON n.vid = ctp.vid LEFT JOIN {files} f ON f.fid = cfic.field_image_cache_fid WHERE ctp.field_prod_unit_barcode_value = '%s'", $model));
+	
+	if($product) {
+		if(empty($product->filepath)) {
+			$old_path = file_directory_path().'/notfound.png';
+		} else {
+			$old_path = $product->filepath;
+		}
+
+		return (object)array('model' => $product->field_prod_unit_barcode_value, 'nid' => $product->nid, 'title' => $product->title, 'fid' => $product->fid, 'old_path' => $old_path, 'new_path' => $new_path);
+	}
+	
+	$product = db_fetch_object(db_query("SELECT up.model, n.nid, n.title, cfic.field_image_cache_fid, f.fid, f.filepath FROM {uc_products} up INNER JOIN {node} n ON up.nid = n.nid LEFT JOIN {content_field_image_cache} cfic ON n.nid = cfic.nid LEFT JOIN {files} f ON f.fid = cfic.field_image_cache_fid WHERE n.vid IN (SELECT cfab.vid FROM {content_field_additional_barcodes} cfab WHERE field_additional_barcodes_value = '%s')", $model));
+	
+	if($product) {
+		if(empty($product->filepath)) {
+			$old_path = file_directory_path().'/notfound.png';
+		} else {
+			$old_path = $product->filepath;
+		}
+
+		return (object)array('model' => $model, 'nid' => $product->nid, 'title' => $product->title, 'fid' => $product->fid, 'old_path' => $old_path, 'new_path' => $new_path);
+	}
+
+	return false;
+}

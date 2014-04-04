@@ -1,0 +1,9 @@
+#edit-quantity-purchased-wrapper, #edit-unit-cost-wrapper {
+	float: left;
+}
+#edit-stock-comment-wrapper {
+	clear: both;	
+}
+p.stock-status {
+	margin: 0 0 10px;	
+}

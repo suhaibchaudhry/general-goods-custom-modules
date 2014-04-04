@@ -1,0 +1,6 @@
+name = GGW Views Query Alterations
+description = Alters various views queries for ggw.
+dependencies[] = views
+dependencies[] = user_term_credits
+package = GGW Custom Modules
+core = 6.x

@@ -1,0 +1,5 @@
+name = GGW User Profile
+description = Style User Profile.
+dependencies[] = uberpos
+package = GGW Custom Modules
+core = 6.x

@@ -1,0 +1,9 @@
+.qr-by-dept ul ul {
+	margin: 0 0 0 20px;	
+	font-weight: normal;
+}
+.qr-by-dept ul {
+	margin-top: 10px;
+	margin-bottom: 10px;
+	font-weight: bold;
+}

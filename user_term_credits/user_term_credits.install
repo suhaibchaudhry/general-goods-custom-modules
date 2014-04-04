@@ -1,0 +1,167 @@
+<?php
+function user_term_credits_schema() {
+	$schema = array();
+	
+	$schema['user_term_credits_limits'] = array(
+		'description' => 'User credits and term limits.',
+		'fields' => array(
+			'uid' => array(
+				'type' => 'int',
+        		'not null' => TRUE,
+        		'default' => 0,
+				'unsigned' => TRUE,
+				'description' => "User ID of the user"
+			),
+			'credit_limit' => array(
+				'description' => 'User credit limit.',
+        		'type' => 'numeric',
+        		'precision' => 16,
+        		'scale' => 5,
+        		'not null' => TRUE,
+        		'default' => 0.0
+			),
+			'term_limit' => array(
+				'description' => 'The sort criteria for products.',
+        		'type' => 'int',
+        		'size' => 'tiny',
+        		'not null' => TRUE,
+        		'default' => 10
+			),
+			'term_note' => array(
+				'description' => 'Credit term notes.',
+        		'type' => 'text'
+			)
+		),
+		'primary key' => array('uid')
+	);
+	
+	$schema['user_term_credits_usages'] = array(
+		'description' => 'User credits and term limits log.',
+		'fields' => array(
+			'cuid' => array(
+				'type' => 'serial',
+        		'unsigned' => TRUE,
+        		'not null' => TRUE,
+				'description' => "Credit payment id."
+			),
+			'uid' => array(
+				'type' => 'int',
+        		'not null' => TRUE,
+        		'default' => 0,
+				'unsigned' => TRUE,
+				'description' => "User ID of the user"
+			),
+			'order_id' => array(
+				'type' => 'int',
+        		'not null' => TRUE,
+        		'default' => 0,
+				'unsigned' => TRUE,
+				'description' => "Order ID of the order."
+			),
+			'credit_amount' => array(
+				'description' => 'Credit amount used for this transaction.',
+        		'type' => 'numeric',
+        		'precision' => 16,
+        		'scale' => 5,
+        		'not null' => TRUE,
+        		'default' => 0.0
+			),
+			'term_limit' => array(
+				'description' => 'The sort criteria for products.',
+        		'type' => 'int',
+        		'size' => 'tiny',
+        		'not null' => TRUE,
+        		'default' => 10
+			),
+			'consumption_date' => array(
+        		'description' => 'The Unix timestamp indicating when the credits were consumed.',
+        		'type' => 'int',
+				'size' => 'big',
+        		'not null' => TRUE,
+				'unsigned' => TRUE,
+        		'default' => 0
+      		),
+			'due_date' => array(
+        		'description' => 'The Unix timestamp indicating when the credits are due settlement.',
+        		'type' => 'int',
+				'size' => 'big',
+        		'not null' => TRUE,
+				'unsigned' => TRUE,
+        		'default' => 0
+      		),
+			'settled' => array(
+				'description' => 'The flag for settling the usage.',
+        		'type' => 'int',
+        		'size' => 'tiny',
+        		'not null' => TRUE,
+        		'default' => 0
+			)
+		),
+		'indexes' => array(
+			'consumptions' => array('cuid', 'uid'),
+		),
+		'primary key' => array('cuid')
+	);
+	
+	$schema['user_term_credits_settlements'] = array(
+		'description' => 'User credits settlements log.',
+		'fields' => array(
+			'sid' => array(
+				'type' => 'serial',
+        		'unsigned' => TRUE,
+        		'not null' => TRUE,
+				'description' => "Credit settlement id."
+			),
+			'cuid' => array(
+				'type' => 'int',
+        		'not null' => TRUE,
+        		'default' => 0,
+				'unsigned' => TRUE,
+				'description' => "User ID of the user"
+			),
+			'settlement_amount' => array(
+				'description' => 'Credit amount used for this transaction.',
+        		'type' => 'numeric',
+        		'precision' => 16,
+        		'scale' => 5,
+        		'not null' => TRUE,
+        		'default' => 0.0
+			),
+			'payment_type' => array(
+		        'description' => 'The type of payment that was used to make settlement.',
+		        'type' => 'varchar',
+		        'length' => 255,
+		        'not null' => TRUE,
+		        'default' => ''
+		    ),
+			'remarks' => array(
+		        'description' => 'Remarks',
+		        'type' => 'text',
+		        'not null' => TRUE,
+		        'size' => 'big'
+		    ),
+			'settlement_date' => array(
+        		'description' => 'The Unix timestamp indicating when the credits were settled.',
+        		'type' => 'int',
+				'size' => 'big',
+        		'not null' => TRUE,
+				'unsigned' => TRUE,
+        		'default' => 0
+      		),
+		),
+		'indexes' => array(
+			'consumptions' => array('sid', 'cuid'),
+		),
+		'primary key' => array('sid')
+	);
+	
+	return $schema;
+}
+
+function user_term_credits_install() {
+	drupal_install_schema('user_term_credits');
+}
+
+function user_term_credits_uninstall() {
+	drupal_uninstall_schema('user_term_credits');
+}

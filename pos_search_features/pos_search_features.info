@@ -1,0 +1,8 @@
+name = POS Search Features
+description = User Search Features for POS.
+#dependencies[] = uberpos
+dependencies[] = jquery_ui
+dependencies[] = pos_stock_management
+#package = UberPOS
+package = General Goods POS
+core = 6.x

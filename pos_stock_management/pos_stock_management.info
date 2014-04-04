@@ -1,0 +1,6 @@
+name = POS Stock Management
+description = POS Stock Management Module.
+dependencies[] = ca
+dependencies[] = uc_product
+package = General Goods POS
+core = 6.x

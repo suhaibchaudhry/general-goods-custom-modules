@@ -1,0 +1,13 @@
+.settlement span.label {
+	font-weight: bold;
+	display: inline-block;
+	width: 100px;
+}
+
+.settlement div.info {
+	margin: 10px 0;
+}
+
+.settlement #edit-amount {
+	width: 145px;
+}

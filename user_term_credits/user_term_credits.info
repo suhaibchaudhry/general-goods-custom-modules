@@ -1,0 +1,4 @@
+name = User Term Credits
+description = User term credits provides a mechanism for assigning credits and terms to users, and then allowing users to make purchases with those credits.
+package = General Goods POS
+core = 6.x

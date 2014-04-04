@@ -1,0 +1,60 @@
+<?php
+function ggw_views_alters_views_pre_render(&$view) {
+	if($view->name == 'customer_list') {
+		$view->style_plugin->definition['theme'] = 'ggw_customer_list_table';
+		foreach($view->result as $index => $result) {
+			$credits = _user_term_credits_getCredits($result->users_uid);
+			$view->result[$index]->balance = '$'.$credits->pending_payments;
+			$view->result[$index]->last_order = ggw_views_alter_last_order($result->users_uid);
+			$view->result[$index]->users_name = l($view->result[$index]->users_name, 'user/'.$result->users_uid, array('attributes' => array('target' => '_blank')));
+		}
+	}
+}
+
+function ggw_views_alters_theme($existing, $type, $theme, $path) {
+	return array(
+    	'ggw_customer_list_table' => array(
+    	  'arguments' => array(
+    	    'view' => NULL,
+    	    'options' => NULL,
+    	    'rows' => NULL,
+    	    'title' => NULL
+    	  )
+   		)
+	);
+}
+
+function theme_ggw_customer_list_table($view, $options, $rows, $title) {
+	$data = array();
+	$header = array('Account #', 'Company Name', 'Company Phone', 'Balance', 'Last Order Date', 'Options');
+	foreach($rows as $index => $row) {
+		$data[$index] = array($row->users_name, $row->node_title, $row->node_data_field_profile_company_phone_field_profile_company_phone_number, $row->balance,  $row->last_order, l('Generate Shelf Stickers', 'admin/store/qr-codes/'.$row->users_uid, array('attributes' => array('target' => '_blank'))));
+	}
+
+	return theme('table', $header, $data);
+}
+
+function ggw_views_alter_last_order($uid) {
+	$count_sql = "SELECT COUNT(*) FROM uc_orders WHERE order_status = 'pos_completed' AND uid = %d ORDER BY created DESC";
+	$sql = "SELECT created FROM uc_orders WHERE order_status = 'pos_completed' AND uid = %d ORDER BY created DESC";
+
+	if(db_result(db_query($count_sql, $uid)) == '0') {
+		return 'No Orders';
+	} else {
+		return date('m/d/y', db_result(db_query($sql, $uid)));
+	}
+}
+
+function ggw_views_alters_cron() {
+	$hour = (int)date('G');
+	if($hour > 22 || hour < 4) {
+		$orders = db_query("SELECT order_id, data FROM {uc_orders} WHERE data <> 'a:0:{}'");
+		while($order = db_fetch_object($orders)) {
+			$d = unserialize($order->data);
+			if($d['zone']) {
+				db_query("DELETE FROM {uc_orders} WHERE order_id = '%d'", $order->order_id);
+				//Remove Order Products
+			}
+		}
+	}
+}

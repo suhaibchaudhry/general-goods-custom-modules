@@ -1,0 +1,162 @@
+<?php
+function pos_search_features_perm() {
+	return array('use pos advance search');
+}
+
+function pos_search_features_menu() {
+	$items = array();
+	/*
+	$items['admin/store/pos/psf/user-search'] = array(
+		'title' => 'User Search',
+		'type' => MENU_CALLBACK,
+		'description' => 'Display user search.',
+		'page callback' => '_pos_search_features_user_search',
+		'access arguments' => array('use pos advance search'),
+		'file' => 'includes/pos_search_features_user.inc'
+	);
+	
+	$items['admin/store/pos/psf/user-search/data'] = array(
+		'title' => 'User Search',
+		'type' => MENU_CALLBACK,
+		'description' => 'Display user search data callback.',
+		'page callback' => '_pos_search_features_user_search_data',
+		'access arguments' => array('use pos advance search'),
+		'file' => 'includes/pos_search_features_user_data.inc'
+	);
+	
+	$items['admin/store/pos/psf/invoice-search'] = array(
+		'title' => 'Invoice Search',
+		'type' => MENU_CALLBACK,
+		'description' => 'Display invoice search.',
+		'page callback' => '_pos_search_features_invoice_search',
+		'access arguments' => array('use pos advance search'),
+		'file' => 'includes/pos_search_features_invoice.inc'
+	);
+	
+	$items['admin/store/pos/psf/invoice-search/data'] = array(
+		'title' => 'Invoice Search',
+		'type' => MENU_CALLBACK,
+		'description' => 'Display invoice search data callback.',
+		'page callback' => '_pos_search_features_invoice_search_data',
+		'access arguments' => array('use pos advance search'),
+		'file' => 'includes/pos_search_features_invoice_data.inc'
+	);*/
+	
+	$items['admin/store/pos/psf/product-search'] = array(
+		'title' => 'Invoice Search',
+		'type' => MENU_CALLBACK,
+		'description' => 'Display product search.',
+		'page callback' => '_pos_search_features_product_search',
+		'access arguments' => array('use pos advance search'),
+		'file' => 'includes/pos_search_features_product.inc'
+	);
+	
+	$items['admin/store/pos/psf/product-search/data'] = array(
+		'title' => 'Invoice Search',
+		'type' => MENU_CALLBACK,
+		'description' => 'Display product search data callback.',
+		'page callback' => '_pos_search_features_product_search_data',
+		'access arguments' => array('use pos advance search'),
+		'file' => 'includes/pos_search_features_product_data.inc'
+	);
+
+	return $items;
+}
+
+/*
+function pos_search_features_uberpos_buttons() {
+	drupal_add_css(drupal_get_path('module', 'jquery_ui').'/jquery.ui/themes/smoothness/jquery-ui-1.7.3.custom.css');
+	jquery_ui_add(array('ui.dialog', 'ui.slider', 'effects.drop', 'ui.draggable'));
+	
+	drupal_add_css(drupal_get_path('module', 'pos_search_features').'/css/pos_dialog_init.css');
+	drupal_add_js(drupal_get_path('module', 'pos_search_features').'/js/pos_dialog_init.js');
+
+	drupal_add_css(drupal_get_path('module', 'pos_search_features').'/css/pos_search_user.css');
+	drupal_add_js(drupal_get_path('module', 'pos_search_features').'/js/pos_search_user.js');
+
+	$buttons = array();
+  	if(user_access('use pos advance search')) {
+ 		 $buttons[] = array(
+ 		   'section' => 'right',
+ 		   'text' => t('CHANGE CUSTOMER'),
+ 		   'weight' => 10,
+ 		   'attributes' => array(
+ 		     'class' => 'uberpos-button-advance-user-search up-button-submit uberpos-button-advance-search',
+			 'data-dialog-callback' => base_path().'?q=admin/store/pos/psf/user-search',
+			 'data-ahah-callback' => base_path().'?q=admin/store/pos/psf/user-search/data'
+ 		   )
+ 		 );
+		 
+		 $buttons[] = array(
+ 		   'section' => 'right',
+ 		   'text' => t('FIND INVOICE'),
+ 		   'weight' => 10,
+ 		   'attributes' => array(
+ 		     'class' => 'uberpos-button-advance-invoice-search up-button-submit uberpos-button-advance-search uberpos-button-preclear',
+			 'data-dialog-callback' => base_path().'?q=admin/store/pos/psf/invoice-search',
+			 'data-ahah-callback' => base_path().'?q=admin/store/pos/psf/invoice-search/data'
+ 		   )
+ 		 );
+
+		 $buttons[] = array(
+ 		   'section' => 'right',
+ 		   'text' => t('ADD PRODUCT'),
+ 		   'weight' => 10,
+ 		   'attributes' => array(
+ 		     'class' => 'uberpos-button-advance-invoice-search up-button-submit uberpos-button-advance-search',
+			 'data-dialog-callback' => base_path().'?q=admin/store/pos/psf/product-search',
+			 'data-ahah-callback' => base_path().'?q=admin/store/pos/psf/product-search/data'
+ 		   )
+ 		 );
+ 	}
+
+	return $buttons;
+}*/
+
+function _pos_search_features_construct_query($fieldMap, $conditions, $sorts = NULL) {
+	$fieldList = array();
+	$from = ' FROM ';
+	$first = true;
+	foreach($fieldMap as $table => $fields) {
+		$fieldList[] = implode(', ', $fieldMap[$table]);
+
+		if($first) {
+			$from .= ' '.$table;
+			$first = false;
+		} else {
+			$from .= ' LEFT JOIN '.$table;
+		}
+	}
+
+	$fieldList = implode(', ', $fieldList);
+	
+	$query = 'SELECT '.$fieldList.$from.' WHERE '.implode(' AND ', $conditions);
+
+	if(!empty($sorts)) {
+		$query .= ' ORDER BY '.implode(', ', $sorts);
+	}
+
+	return $query;
+}
+
+function _pos_search_features_construct_like_wheres(&$wheres, $conditionMap) {
+	foreach($conditionMap as $field => $value) {
+		if(!empty($value)) {
+			$wheres[] = $field." LIKE '%%".db_escape_string($value)."%%'";
+		}
+	}
+}
+
+function _pos_search_features_input_size_validate() {
+		$args = func_get_args();
+		$flag = true;
+		$char_limit = array_shift($args);
+		foreach($args as $arg) {
+			if(strlen($arg) > $char_limit-1) {
+				$flag = false;
+				break;
+			}
+		}
+		
+		return $flag;
+}

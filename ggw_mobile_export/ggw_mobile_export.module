@@ -1,0 +1,34 @@
+<?php
+function ggw_mobile_export_menu() {
+	$items['ggw-mobile/feed'] = array(
+		'title' => 'General Goods Wholesale Product Feed',
+ 		'type' => MENU_CALLBACK,
+		'page callback' => 'ggw_mobile_export_feed',
+		'access arguments' => array('access content')
+	);
+	
+	return $items;
+}
+
+function ggw_mobile_export_feed() {
+	header("Content-Type: text/plain");
+
+	$products = db_query("SELECT n.title, up.nid, up.model, up.list_price, up.cost, up.sell_price, ctp.field_prod_packing_value, f.filepath, ctp.field_prod_unit_barcode_value FROM {uc_products} up INNER JOIN {node} n ON up.nid = n.nid LEFT JOIN {content_field_image_cache} cfi ON n.vid = cfi.vid LEFT JOIN {content_type_product} ctp ON n.vid = ctp.vid LEFT JOIN {files} f ON cfi.field_image_cache_fid = f.fid WHERE n.status > 0");
+	$query = 'DROP TABLE IF EXISTS ggwdata;';
+	$query .= 'CREATE TABLE IF NOT EXISTS ggwdata (nid unique, title TEXT, model TEXT, list_price TEXT, cost TEXT, sell_price TEXT, packaging TEXT, image_url TEXT, unit_barcode TEXT);';
+	//$query .= 'DELETE FROM ggwdata WHERE 1;'."\n";
+	//$i = 0;
+	while($product = db_fetch_object($products)) {
+		$query .= 'INSERT INTO ggwdata (nid, title, model, list_price, cost, sell_price, packaging, image_url, unit_barcode) VALUES ('.$product->nid.', "'.ggw_mobile_sanatize($product->title).'", "'.ggw_mobile_sanatize($product->model).'", "'.$product->list_price.'", "'.$product->cost.'", "'.$product->sell_price.'", "'.ggw_mobile_sanatize($product->field_prod_packing_value).'", "'.str_replace('/files', '/files/imagecache/mobileimage', $product->filepath).'", "'.ggw_mobile_sanatize($product->field_prod_unit_barcode_value).'");';
+		//if($i == 10) {
+		//	break;
+		//}
+		//$i++;
+	}
+
+	print $query;
+}
+
+function ggw_mobile_sanatize($input) {
+	return trim(str_replace(array('"', ';'), array('""', ''), html_entity_decode($input)));
+}

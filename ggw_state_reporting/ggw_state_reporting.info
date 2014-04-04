@@ -1,0 +1,4 @@
+name = GGW State Reporting
+dependencies[] = pos_stock_management
+package = General Goods POS
+core = 6.x

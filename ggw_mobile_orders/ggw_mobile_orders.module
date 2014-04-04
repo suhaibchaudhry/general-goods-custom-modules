@@ -1,0 +1,530 @@
+<?php
+function ggw_mobile_orders_menu() {
+	$items['admin/store/mobile-orders/list'] = array(
+		'type' => MENU_NORMAL_ITEM,
+		'title' => 'Mobile Orders',
+		'description' => 'Display mobile orders.',
+		'page callback' => 'ggw_mobile_orders_dashboard',
+		'access arguments' => array('view all orders')
+	);
+
+	$items['admin/mobile-orders/%'] = array(
+		'type' => MENU_NORMAL_ITEM,
+		'title' => 'Mobile Order Details',
+		'description' => 'Display mobile order.',
+		'page callback' => 'ggw_mobile_orders_order',
+		'page arguments' => array(2),
+		'access arguments' => array('view all orders')
+	);
+	
+	$items['admin/store/label-orders/list'] = array(
+		'type' => MENU_NORMAL_ITEM,
+		'title' => 'Shelf Label Orders',
+		'description' => 'Display shelf label orders.',
+		'page callback' => 'ggw_mobile_shelf_label_orders',
+		'access arguments' => array('view all orders')
+	);
+
+	$items['admin/label-orders/%'] = array(
+		'type' => MENU_NORMAL_ITEM,
+		'title' => 'Mobile Order Details',
+		'description' => 'Display mobile order.',
+		'page callback' => 'ggw_mobile_shelf_label_order',
+		'page arguments' => array(2),
+		'access arguments' => array('view all orders')
+	);
+	
+	$items['cart/mobile-orders/%'] = array(
+		'type' => MENU_CALLBACK,
+		'title' => 'Mobile Order Re-order',
+		'description' => 'Re-order a mobile order.',
+		'page callback' => 'ggw_mobile_orders_reorder',
+		'page arguments' => array(2),
+		'access arguments' => array('access content')
+	);
+
+	/*	
+	$items['admin/mobile-orders/proxy'] = array(
+		'type' => MENU_CALLBACK,
+		'title' => 'Mobile Orders RPC Proxy',
+		'description' => 'Display mobile orders RPC.',
+		'page callback' => 'ggw_mobile_orders_rpc',
+		'access arguments' => array('view all orders')
+	);
+	*/
+
+	return $items;
+}
+
+function ggw_mobile_orders_render_user($name) {
+	return db_result(db_query("SELECT u.uid FROM {users} u WHERE u.name = '%s'", $name));
+}
+
+function ggw_mobile_orders_dashboard() {
+	$q = $_GET['q'];
+	unset($_GET['q']); //Remove drupal q query
+	drupal_add_js(drupal_get_path('module', 'ggw_mobile_orders').'/js/ggw_mobile_orders.js');
+	drupal_add_js(drupal_get_path('module', 'ggw_mobile_orders').'/js/ggw_mobile_orders_count_down.js');
+	drupal_add_css(drupal_get_path('module','ggw_mobile_orders').'/css/ggw_mobile_orders.css');
+
+	$content  = '';
+	$content .= '<div id="countdown"></div>';
+	$content .= ggw_mobile_orders_type_table('pickup', 'Pickup Orders');
+	$content .= ggw_mobile_orders_type_table('delivery', 'Delivery Orders');
+	
+	$_GET['q'] = $q;
+
+	return $content;
+}
+
+function ggw_mobile_orders_order($oid) {
+	drupal_add_css(drupal_get_path('module','ggw_mobile_orders').'/css/ggw_mobile_orders.css');
+	$q = $_GET['q'];
+	unset($_GET['q']); //Remove drupal q query
+
+	$_GET['oid'] = $oid;
+
+	$content = '';
+
+	$data = ggw_mobile_orders_rpc(_ggw_mobile_construct_query());
+	$data = json_decode($data);
+	$order = $data->data[0];
+	if($order) {
+		$content .= '<div class="ggw-order-details">';
+
+		$content .= ggw_mobile_orders_item('Order ID', $order->oid);
+		
+		$uid = ggw_mobile_orders_render_user($order->name);
+		if(!empty($uid)) {
+			$content .= ggw_mobile_orders_item('Account #', l($order->name, 'user/'.$uid));
+
+			$profile = content_profile_load('profile', $uid);
+
+			$content .= ggw_mobile_orders_item('Company', l($profile->title, 'user/'.$uid));
+			$content .= ggw_mobile_orders_item('Shipping Address', '<pre>'.$profile->field_shipping_address[0]['street1'].' '.$profile->field_shipping_address[0]['street2']."\n".$profile->field_shipping_address[0]['city'].', '.$profile->field_shipping_address[0]['state'].' '.$profile->field_shipping_address[0]['zip'].'</pre>');
+		} else {
+			$content .= ggw_mobile_orders_item('Customer', $order->name);
+		}
+
+		$content .= ggw_mobile_orders_item('Total Quantity', $order->total_quantity);
+		$content .= ggw_mobile_orders_item('Total', '$'.number_format($order->total, 2));
+		$content .= ggw_mobile_orders_item('Date', $order->created, 2);
+
+		$content .= '<div class="product-table">';
+		$header = array('UPC', 'Product', 'Packaging', 'QTY', 'Unit Price', 'Total');
+		$rows = array();
+		if(is_array($order->products)) {
+			foreach($order->products as $product) {
+				$node = node_load($product->nid);
+				if($node) {
+					$upc = $node->model;
+				} else {
+					$upc = '';
+				}
+
+				$rows[] = array($upc, l($product->title, 'node/'.$product->nid), $node->field_prod_packing[0]['value'], $product->qty, '$'.number_format($product->unit_price, 2), $product->total_price);
+			}
+
+			$content .= theme_table($header, $rows, array('class' => 'mobile-orders-table'));
+		} else {
+			$content = '<p class="ggw-remote-error">No products were found for this order.</div>';
+		}
+
+		$content .= '</div>';
+
+		$content .= '</div>';
+	} else {
+		$content = '<p>The order you are looking for could not be found.</p>';
+	}
+
+	//dpm($data);
+	$_GET['q'] = $q;
+
+	return $content;
+}
+
+function ggw_mobile_orders_item($label, $value) {
+	return '<div class="order-detail"><span class="label">'.$label.'</span>: <span class="value">'.$value.'</span></div>';
+}
+
+function ggw_mobile_orders_type_table($type, $title = '') {
+	$_GET['type'] = $type;
+	$_GET['sort'] = 3;
+	$_GET['sort_opr'] = 'DESC';
+
+	if($type == 'pickup') {
+		if(isset($_GET['ppage'])) {
+			$_GET['page'] = $_GET['ppage'];
+			//unset($_GET['ppage']);
+		}
+	}
+
+	if($type == 'delivery') {
+		if(isset($_GET['dpage'])) {
+			$_GET['page'] = $_GET['dpage'];
+			//unset($_GET['dpage']);
+		}
+	}
+
+	$data = ggw_mobile_orders_rpc(_ggw_mobile_construct_query());
+	$data = json_decode($data);
+	//dpm($data);
+	$content = '';
+
+	if($title) {
+		$start = ($data->page-1)*($data->per_page);
+		$end = $start+$data->displaying;
+		$content .= '<h2>'.$title.' (Displaying '.($start+1).'-'.$end.' of '.$data->total.')</h2>';
+	}
+
+	$header = array('Order ID', 'Customer', 'Total QTY', 'Total', 'Date', 'Details');
+	$rows = array();
+	if(is_array($data->data)) {
+		foreach($data->data as $order) {
+			$uid = ggw_mobile_orders_render_user($order->name);
+			if(!empty($uid)) {
+				$customer = l($order->name, 'user/'.$uid);
+			} else {
+				$customer = $order->name;
+			}
+
+			$rows[] = array($order->oid, $customer, $order->total_quantity, '$'.number_format($order->total, 2), $order->created, l('View Details', 'admin/mobile-orders/'.$order->oid));
+		}
+
+		$content .= theme_table($header, $rows, array('class' => 'mobile-orders-table'));
+	} else {
+		$content = '<p class="ggw-remote-error">No orders were found for your request.</div>';
+	}
+
+	$pages = ceil($data->total/$data->per_page);
+	$class = 'ggw-pager-page';
+	$i = 0;
+	$items = array();
+	while($i < $pages) {
+		if($type == 'pickup') {
+			if($data->page == ($i+1)) {
+				$class .= ' active';
+			}
+			$items[] = '<a class="'.$class.'" href="'.base_path().'admin/store/mobile-orders/list?dpage='.($_GET['dpage'] ? $_GET['dpage'] : 1).'&ppage='.($i+1).'">'.($i+1).'</a>';
+		} elseif($type == 'delivery') {
+			if($data->page == ($i+1)) {
+				$class .= ' active';
+			}
+			$items[] = '<a class="'.$class.'" href="'.base_path().'admin/store/mobile-orders/list?ppage='.($_GET['ppage'] ? $_GET['ppage'] : 1).'&dpage='.($i+1).'">'.($i+1).'</a>';
+		}
+		$i++;
+	}
+
+	$content .= theme('item_list', $items, '', 'ul', array('class' => 'pager'));
+
+	return $content;
+}
+
+function ggw_mobile_orders_customer_table($name) {
+	//$_GET['type'] = $type;
+	$_GET['sort'] = 3;
+	$_GET['sort_opr'] = 'DESC';
+	$_GET['name'] = $name;
+
+	/*
+	if($type == 'pickup') {
+		if(isset($_GET['ppage'])) {
+			$_GET['page'] = $_GET['ppage'];
+			//unset($_GET['ppage']);
+		}
+	}
+
+	if($type == 'delivery') {
+		if(isset($_GET['dpage'])) {
+			$_GET['page'] = $_GET['dpage'];
+			//unset($_GET['dpage']);
+		}
+	}
+	*/
+
+	$data = ggw_mobile_orders_rpc(_ggw_mobile_construct_query());
+	$data = json_decode($data);
+	//dpm($data);
+	$content = '';
+
+	if($title) {
+		$start = ($data->page-1)*($data->per_page);
+		$end = $start+$data->displaying;
+		$content .= '<h2>'.$title.' (Displaying '.($start+1).'-'.$end.' of '.$data->total.')</h2>';
+	}
+
+	$header = array('Total QTY', 'Total', 'Date', '');
+	$rows = array();
+	if(is_array($data->data)) {
+		foreach($data->data as $order) {
+
+			$rows[] = array($order->total_quantity, '$'.number_format($order->total, 2), $order->created, l('Re-order', 'cart/mobile-orders/'.$order->oid));
+		}
+
+		$content .= theme_table($header, $rows, array('class' => 'mobile-orders-table'));
+	} else {
+		$content = '<p class="ggw-remote-error">Our records indicate no orders.</div>';
+	}
+
+	$pages = ceil($data->total/$data->per_page);
+	$class = 'ggw-pager-page';
+	$i = 0;
+	$items = array();
+	while($i < $pages) {
+		if($data->page == ($i+1)) {
+				$class .= ' active';
+		}
+		$items[] = '<a class="'.$class.'" href="'.base_path().$_GET['q'].'?page='.($i+1).'">'.($i+1).'</a>';
+		$i++;
+	}
+
+	$content .= theme('item_list', $items, '', 'ul', array('class' => 'pager'));
+
+	return $content;
+}
+
+function ggw_mobile_orders_block($op = 'list', $delta = 0, $edit = array()) {
+	if ($op == 'list') {
+		$blocks[0] = array(
+		  'info' => t('Previous Orders'),
+		  'cache' => BLOCK_CACHE_PER_USER
+		);
+
+		return $blocks;
+	} else if($op == 'view') {
+		if($delta == 0) {
+			global $user;
+			return array('subject' => '', 'content' => ggw_mobile_orders_customer_table($user->name));
+		}
+	}
+}
+
+function ggw_mobile_orders_reorder($oid) {
+	global $user;
+	if(is_numeric($oid) && $user->uid != 0) {
+		$q = $_GET['q'];
+		unset($_GET['q']); //Remove drupal q query
+	
+		$_GET['oid'] = $oid;
+	
+		$content = '';
+	
+		$data = ggw_mobile_orders_rpc(_ggw_mobile_construct_query());
+		$data = json_decode($data);
+		$order = $data->data[0];
+		if($order) {
+			$cart_data = serialize(array('shippable' => 1, 'module' => 'uc_product'));
+			$cart_id = uc_cart_get_id();
+			db_query("DELETE FROM {uc_cart_products} WHERE cart_id = '%d'", $cart_id);
+			foreach($order->products as $product) {
+				if(ggw_mobile_product_active($product->nid)) {
+					db_query("INSERT INTO {uc_cart_products} (cart_id, nid, qty, changed, data) VALUES ('%d', '%d', '%d', '%d', '%s')", $cart_id, $product->nid, $product->qty, time(), $cart_data);
+				}
+			}
+		}
+		
+		$_GET['q'] = $q;
+	}
+	
+	drupal_goto('cart');
+}
+
+function ggw_mobile_product_active($nid) {
+	$exist = db_result(db_query("SELECT COUNT(*) FROM {node} n WHERE n.nid = '%d' AND n.status = '1'", $nid));
+
+	return (bool)$exist;
+}
+
+function ggw_mobile_orders_rpc($query) {
+	$ch = curl_init();
+	$resource = "http://www.abouttrading.com/ggw/dashboard/index.php?".$query;
+	curl_setopt($ch, CURLOPT_URL, $resource);
+	//dpm($resource);
+	curl_setopt($ch, CURLOPT_HEADER, 0);
+	curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
+	
+	$data = curl_exec($ch);
+	curl_close($ch);
+
+	return $data;
+}
+
+function ggw_mobile_labels_rpc($query) {
+	$ch = curl_init();
+	$resource = "http://www.abouttrading.com/ggw/dashboard/labels.php?".$query;
+	curl_setopt($ch, CURLOPT_URL, $resource);
+	//dpm($resource);
+	curl_setopt($ch, CURLOPT_HEADER, 0);
+	curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
+	
+	$data = curl_exec($ch);
+	curl_close($ch);
+
+	return $data;
+}
+
+function _ggw_mobile_construct_query() {
+	$params = $_GET;
+	$query = '';
+
+	foreach ($params as $param => $value) {
+	   $query .= $param.'='.$value .'&';
+	}
+
+	return substr($query, 0, -1);
+}
+
+function ggw_mobile_shelf_label_orders() {
+	$q = $_GET['q'];
+	unset($_GET['q']); //Remove drupal q query
+	drupal_add_js(drupal_get_path('module', 'ggw_mobile_orders').'/js/ggw_mobile_orders.js');
+	drupal_add_js(drupal_get_path('module', 'ggw_mobile_orders').'/js/ggw_mobile_orders_count_down.js');
+	drupal_add_css(drupal_get_path('module','ggw_mobile_orders').'/css/ggw_mobile_orders.css');
+
+	$content  = '';
+	$content .= '<div id="countdown"></div>';
+	$content .= ggw_mobile_shelf_label_order_table('Shelf Label Orders');
+	
+	$_GET['q'] = $q;
+
+	return $content;
+}
+
+function ggw_mobile_shelf_label_order($lid) {
+	$_GET['lid'] = $lid;
+	$data = ggw_mobile_labels_rpc(_ggw_mobile_construct_query());
+	$data = json_decode($data);
+	$items = array();
+	$i = 0;
+	if(is_array($data->data[0]->labels)) {
+		foreach($data->data[0]->labels as $products) {
+			$product = node_load($products->nid);
+			$items[$i]['name'] = ggw_qr_codes_truncate($product->title, 35);
+			$items[$i]['barcode'] = $product->model;
+			$i++;
+		}
+	}
+	
+	ggw_qr_codes_generate($items, $header, "No products were found in database.");
+}
+
+function ggw_mobile_shelf_label_order_table($title = '') {
+	$_GET['sort'] = 1;
+	$_GET['sort_opr'] = 'DESC';
+	if(isset($_GET['ppage'])) {
+		$_GET['page'] = $_GET['ppage'];
+		//unset($_GET['ppage']);
+	}
+
+	$data = ggw_mobile_labels_rpc(_ggw_mobile_construct_query());
+	$data = json_decode($data);
+	//dpm($data);
+	$content = '';
+
+	if($title) {
+		$start = ($data->page-1)*($data->per_page);
+		$end = $start+$data->displaying;
+		$content .= '<h2>'.$title.' (Displaying '.($start+1).'-'.$end.' of '.$data->total.')</h2>';
+	}
+
+	$header = array('Order ID', 'Customer', 'Date', 'Details');
+	$rows = array();
+	if(is_array($data->data)) {
+		foreach($data->data as $order) {
+			$uid = ggw_mobile_orders_render_user($order->name);
+			if(!empty($uid)) {
+				$customer = l($order->name, 'user/'.$uid);
+			} else {
+				$customer = $order->name;
+			}
+
+			$rows[] = array($order->lid, $customer, $order->created, l('Generate Shelf Labels', 'admin/label-orders/'.$order->lid, array('attributes' => array('target' => '_blank'))));
+		}
+
+		$content .= theme_table($header, $rows, array('class' => 'mobile-orders-table'));
+	} else {
+		$content = '<p class="ggw-remote-error">No orders were found for your request.</div>';
+	}
+
+	$pages = ceil($data->total/$data->per_page);
+	$class = 'ggw-pager-page';
+	$i = 0;
+	$items = array();
+	while($i < $pages) {
+		if($data->page == ($i+1)) {
+			$class .= ' active';
+		}
+		$items[] = '<a class="'.$class.'" href="'.base_path().'admin/store/label-orders/list?ppage='.($i+1).'">'.($i+1).'</a>';
+		$i++;
+	}
+
+	$content .= theme('item_list', $items, '', 'ul', array('class' => 'pager'));
+
+	return $content;
+}
+
+function ggw_mobile_orders_form_alter(&$form, &$form_state, $form_id) {
+	if($form_id == 'uc_cart_view_form') {
+		$form['place_order'] = array('#type' => 'submit', '#value' => 'Place Order');
+		
+		$form['order_type'] = array(
+			'#type' => 'radios',
+			'#title' => 'Order Method',
+			'#default_value' => 0,
+			'#prefix' => '<div class="delivery-opt">',
+			'#suffix' => '</div>',
+			'#options' => array('Pickup', 'Delivery')
+		);
+		
+		$form['#submit'][] = 'ggw_mobile_orders_website_orders_process';
+	}
+}
+
+function ggw_mobile_orders_website_orders_process($form, $form_state) {
+	if($form['#post']['op'] == 'Place Order') {
+		global $user;
+		$products = array();
+		$i = 0;
+		$total = 0;
+		$total_qty = 0;
+		foreach($form['#parameters'][2] as $product) {
+			$li_total = $product->qty*$product->price;
+			$products[$i] = (object)array('title' => $product->title, 'nid' => $product->nid, 'qty' => $product->qty, 'unit_price' => $product->price, 'total_price' => $li_total);
+			$total += $li_total;
+			$total_qty += $product->qty;
+			db_query("DELETE FROM uc_cart_products WHERE cart_item_id = '%d'", $product->cart_item_id);
+			$i++;
+		}
+		
+		$type = array('pickup', 'delivery');
+		if($form_state['values']['order_type'] == '0' || $form_state['values']['order_type'] == '1') {
+			$order_type = (int)$form_state['values']['order_type'];
+		} else {
+			$order_type = 0;
+		}
+	
+		$order = array(
+			'name' => $user->name,
+			'products' => $products,
+			'total' => $total,
+			'total_quantity' => $total_qty,
+			'pickup_or_delivery' => $type[$order_type]
+		);
+	
+		ggw_mobile_orders_post_order('http://www.abouttrading.com/ggw/order_submission.php', $order);
+		drupal_set_message('Your order has been submitted successfully.');
+	}
+}
+
+function ggw_mobile_orders_post_order($url, $data) {
+   $post = curl_init();
+
+   curl_setopt($post, CURLOPT_URL, $url);
+   curl_setopt($post, CURLOPT_POST, 1);
+   curl_setopt($post, CURLOPT_POSTFIELDS, 'data='.urlencode(json_encode($data)));
+   curl_setopt($post, CURLOPT_RETURNTRANSFER, 1);
+
+   $result = curl_exec($post);
+
+   curl_close($post);
+}

@@ -1,0 +1,108 @@
+<?php
+function ggw_product_edit_menu() {
+		$items['admin/upc-database'] = array(
+  			'title' => 'UPC Code Callback',
+  			'type' => MENU_CALLBACK,
+			'description' => 'Loads data from upc code.',
+			'page callback' => 'ggw_product_upc_fetch',
+			'access arguments' => array('create products'),
+			'file path' => drupal_get_path('module', 'ggw_product_edit').'/include',
+			'file' => 'upcdatabase.inc'
+  			// Page callback, etc. need to be added here.
+		);
+
+	return $items;
+}
+
+function ggw_product_edit_form_alter(&$form, $form_state, $form_id) {
+	if($form_id == 'product_node_form' && $form['#node']->type == 'product') {
+		drupal_add_css(drupal_get_path('module', 'ggw_product_edit').'/css/ggw_profile_edit.css');
+		drupal_add_js(drupal_get_path('module', 'ggw_product_edit').'/js/ggw_barcode.js');
+
+		foreach($form as $attr => $form_attr) {
+			if($attr != 'base' && $attr != 'options' && is_array($form_attr) && $form_attr['#type'] == 'fieldset') {
+				$form[$attr]['#attributes'] = array('class' => 'hidden-fieldset');
+			} elseif($attr == 'options') {
+				$form[$attr]['#attributes'] = array('class' => 'publishing-options');
+			}
+		}
+
+		$form['base']['dimensions']['#attributes'] = array('class' => 'hidden-fieldset');
+		$form['base']['shippable']['#attributes'] = array('class' => 'hidden-form-element');
+		$form['base']['weight']['weight']['#attributes'] = array('class' => 'hidden-form-element');
+		$form['base']['weight']['weight_units']['#attributes'] = array('class' => 'hidden-form-element');
+
+		$form['vendors'] = array(
+			'#type' => 'fieldset',
+			'#title' => 'Supplying Vendors',
+			'#weight' => 50,
+			'#attributes' => array('class' => 'supplying-vendor')
+		);
+
+		$form['vendors']['supplier'] = array(
+			'#type' => 'select',
+			'#options' => pos_stock_management_vendors(FALSE),
+			'#multiple' => true,
+			'#default_value' => ggw_product_vendors_defaults($form['#node']->nid)
+		);
+	}
+	
+	if(strpos($form_id, 'uc_product_add_to_cart_form') !== FALSE) {
+		global $user;
+		if(empty($user->uid)) {
+			unset($form['submit']);
+			unset($form['#submit']);
+			unset($form['#validate']);
+			unset($form['qty']);
+			unset($form['nid']);
+		}
+	}
+	
+	if(strpos($form_id, 'uc_product_add_to_cart_form_') !== FALSE) {
+		//dpm($form);
+		$form['#submit'][] = 'ggw_product_edit_add_to_cart_handler';
+	}
+}
+
+function ggw_product_edit_add_to_cart_handler($form, &$form_state) {
+	drupal_goto('node/'.$form['nid']['#value']);
+}
+
+function ggw_product_vendors_defaults($nid) {
+	if(db_result(db_query("SELECT COUNT(*) FROM {ggw_product_vendors} WHERE product_nid = %d", $nid)) == 0) {
+		return array(0);
+	} else {
+		$vendors = db_query("SELECT * FROM {ggw_product_vendors} WHERE product_nid = %d", $nid);
+		$default_values = array();
+		while($vendor = db_fetch_object($vendors)) {
+			$default_values[$vendor->vendor_uid] = $vendor->vendor_uid;
+		}
+		
+		return $default_values;
+	}
+}
+
+function ggw_product_edit_nodeapi(&$node, $op, $a3 = NULL, $a4 = NULL) {
+	if($node->type == 'product') {
+		if($op == 'validate' || $op == 'delete') {
+			db_query("DELETE FROM {ggw_product_vendors} WHERE product_nid = %d", $node->nid);
+		}
+		
+		if($op == 'validate') {
+			drupal_add_css(drupal_get_path('module', 'ggw_product_edit').'/css/ggw_profile_edit.css');
+	
+			$base_query = "INSERT INTO {ggw_product_vendors} VALUES (%d, %d)";
+			
+			if(count($a3['vendors']['supplier']['#value']) > 1 && isset($a3['vendors']['supplier']['#value']["0"])) {
+				form_set_error('supplier', 'You cannot select vendors, when no vendors are associated.');
+				return;
+			}
+			
+			if(!isset($a3['vendors']['supplier']['#value']["0"])) {
+				foreach($a3['vendors']['supplier']['#value'] as $vendor_id) {
+					db_query($base_query, $node->nid, $vendor_id);
+				}
+			}
+		}
+	}
+}

@@ -1,0 +1,573 @@
+<?php
+function user_term_credits_form_alter(&$form, $form_state, $form_id) {
+	if ($form_id == 'uc_payment_methods_form') {
+    	/* Hide the POS payment methods so they can't be enabled */
+    	unset($form['pmtable']['pos_term_credit']);
+	}
+}
+
+function user_term_credits_perm() {
+	return array('administer user term credits', 'edit user term credits', 'use user term credits', 'view own term credit report');
+}
+
+function user_term_credits_menu() {
+  $items['user/%user/term-credits'] = array(
+    'title' => 'User Term Credits',
+    'description' => 'View your credit history.',
+    'page callback' => 'utc_credit_report',
+    'page arguments' => array(1),
+    'access callback' => 'utc_view_credit_report',
+    'access arguments' => array(1),
+    'type' => MENU_LOCAL_TASK
+  );
+  
+  $items['user/%user/term-credits/settle/%'] = array(
+    'title' => 'Credit Usages',
+    'description' => 'Perform a credit settlement.',
+    'page callback' => 'utc_perform_settlement',
+    'page arguments' => array(1, 4),
+    'access arguments' => array('administer user term credits'),
+    'type' => MENU_LOCAL_TASK
+  );
+
+  $items['user/%user/term-credits/auto-settle'] = array(
+    'title' => 'Auto Settle',
+    'description' => 'Perform a credit settlement.',
+    'page callback' => 'utc_perform_auto_settlement',
+    'page arguments' => array(1),
+    'access arguments' => array('administer user term credits'),
+    'type' => MENU_LOCAL_TASK
+  );
+
+  return $items;
+}
+
+function utc_perform_settlement($user, $cuid) {
+	return drupal_get_form('utc_perform_settlement_form', $user, $cuid);
+}
+
+function utc_perform_auto_settlement($user) {
+	return drupal_get_form('utc_perform_auto_settlement_form', $user);
+}
+
+function utc_perform_auto_settlement_form(&$form_state, $user) {
+	drupal_add_css(drupal_get_path('module', 'user_term_credits').'/css/settlement_form.css');
+	$form = array();
+
+	$outstanding_payments = db_result(db_query("SELECT SUM(utcu.credit_amount) FROM {user_term_credits_usages} utcu WHERE utcu.uid = '%d' AND utcu.settled = 0", $user->uid));
+
+	$partial_payments = db_result(db_query("SELECT SUM(utcs.settlement_amount) FROM {user_term_credits_settlements} utcs INNER JOIN {user_term_credits_usages} utcu ON utcu.cuid = utcs.cuid WHERE utcu.uid = '%d' AND utcu.settled = 0", $user->uid));
+
+	$amount_left = $outstanding_payments-$partial_payments;
+
+	$content .= '<div class="info"><span class="label">Customer: </span>'.l($user->name, 'user/'.$user->uid.'/term-credits').'</div>';
+
+	$content .= '<div class="info"><span class="label">Total Owed: </span>'.variable_get('uc_currency_sign', '$').number_format($outstanding_payments, 2).'</div>';
+
+	$content .= '<div class="info"><span class="label">Amount Settled: </span>'.variable_get('uc_currency_sign', '$').number_format($partial_payments, 2).'</div>';
+
+	$content .= '<div class="info"><span class="label">Amount Left: </span>'.variable_get('uc_currency_sign', '$').number_format($amount_left, 2).'</div>';
+
+
+	$form['settlement'] = array(
+		'#type' => 'fieldset',
+		'#title' => 'Auto Settlement',
+		'#attributes' => array('class' => 'settlement'),
+		'#tree' => true
+	);
+
+	$form['uid'] = array(
+		'#type' => 'value',
+		'#value' => $user->uid
+	);
+
+	$form['amount_left'] = array(
+		'#type' => 'value',
+		'#value' => $amount_left
+	);
+
+	$form['settlement']['info'] = array(
+		'#type' => 'markup',
+		'#value' => $content
+	);
+
+	$form['settlement']['amount'] = array(
+		'#type' => 'textfield',
+		'#title' => 'Amount Settled',
+		'#field_prefix' => '$',
+		'#default_value' => number_format($amount_left, 2, '.', '')
+	);
+
+	$form['settlement']['type'] = array(
+		'#type' => 'select',
+		'#title' => 'Settlement Type',
+		'#options' => _utc_get_payment_map(),
+		'#required' => true,
+	);
+
+	$form['settlement']['remarks'] = array(
+		'#type' => 'textarea',
+		'#title' => 'Remarks / Check Date'
+	);
+
+	$form['settlement']['submit'] = array(
+		'#type' => 'submit',
+		'#value' => 'Create Settlement'
+	);
+
+	return $form;
+}
+
+function utc_perform_auto_settlement_form_submit($form, &$form_state) {
+	$values = $form_state['values'];
+	
+	$total_amount = number_format($values['settlement']['amount'], 2, '.', '')*100;
+	$total_left = number_format($values['amount_left'], 2, '.', '')*100;
+
+	$usages = db_query("SELECT utcu.cuid, utcu.credit_amount - ifnull(sums.paid, 0) AS owed
+		FROM {user_term_credits_usages} utcu
+		LEFT JOIN (SELECT SUM(settlement_amount) AS paid, utcs.cuid FROM {user_term_credits_settlements} utcs INNER JOIN {user_term_credits_usages} utcu2 ON utcu2.cuid = utcs.cuid WHERE utcu2.uid = '%d') sums ON utcu.cuid = sums.cuid
+		WHERE utcu.uid = '%d' AND utcu.settled = '0'
+		ORDER BY utcu.consumption_date DESC", $values['uid'], $values['uid']);
+
+	while($usage = db_fetch_object($usages)) {
+		$amount = number_format($values['settlement']['amount'], 2, '.', '')*100;
+		$left = number_format($usage->owed, 2, '.', '')*100;
+		if($amount > $left) {
+			db_query("INSERT INTO {user_term_credits_settlements}
+		(cuid, settlement_amount, payment_type, remarks, settlement_date)
+		VALUES
+		('%d', '%s', '%s', '%s', '%s')", $usage->cuid, $left/100, $values['settlement']['type'], $values['settlement']['remarks'], time());
+
+			$amount = $amount - $left;
+
+			//Set Settled
+			db_query("UPDATE {user_term_credits_usages} SET settled = '1' WHERE cuid = '%d'", $usage->cuid);
+		} else {
+
+			db_query("INSERT INTO {user_term_credits_settlements}
+		(cuid, settlement_amount, payment_type, remarks, settlement_date)
+		VALUES
+		('%d', '%s', '%s', '%s', '%s')", $usage->cuid, $amount/100, $values['settlement']['type'], $values['settlement']['remarks'], time());
+
+			if($amount == $left) {
+				//Set Settled
+				db_query("UPDATE {user_term_credits_usages} SET settled = '1' WHERE cuid = '%d'", $usage->cuid);
+			}
+
+			break;
+		}
+	}
+
+	if($total_amount == $total_left) {
+		drupal_goto("user/".$values['uid']."/term-credits");
+	}
+}
+
+function utc_perform_auto_settlement_form_validate($form, &$form_state) {
+	$values = $form_state['values'];
+
+	//Take care of floating point precision issue to be very accurate.
+	$amount = number_format($values['settlement']['amount'], 2, '.', '')*100;
+	$left = number_format($values['amount_left'], 2, '.', '')*100;
+
+	if($amount > $left) {
+		form_set_error('settlement][amount', "Please input an amount less than the remaining balance of $".number_format($values['amount_left'], 2).".");
+	}
+
+	if($amount == 0) {
+		form_set_error('settlement][amount', "Please insert an amount more than $".number_format(0, 2).".");
+	}
+}
+
+function utc_perform_settlement_form(&$form_state, $user, $cuid) {
+	drupal_add_css(drupal_get_path('module', 'user_term_credits').'/css/settlement_form.css');
+	$form = array();
+	$header = array('Settlement Date', 'Amount', 'Payment Type', 'Remarks');
+	$data = array();
+
+	$settlements = db_query("SELECT settlement_amount, payment_type, remarks, settlement_date FROM {user_term_credits_settlements} WHERE cuid = '%d' ORDER BY settlement_date DESC", $cuid);
+
+	$payment_types_map = _utc_get_payment_map();
+	while($settlement = db_fetch_object($settlements)) {
+		$data[] = array(
+			 date('n/j/Y h:iA', $settlement->settlement_date),
+			 '$'.number_format($settlement->settlement_amount, 2),
+			 $payment_types_map[$settlement->payment_type],
+			 $settlement->remarks
+		);
+	}
+
+	$settlements_table = theme('table', $header, $data);
+
+	$credit_usage = db_fetch_object(db_query("SELECT order_id, credit_amount, consumption_date, due_date FROM user_term_credits_usages WHERE cuid = '%d'", $cuid));
+
+	$partial_payments = db_result(db_query("SELECT SUM(settlement_amount) FROM {user_term_credits_settlements} WHERE cuid = '%d'", $cuid));
+
+	$amount_left = $credit_usage->credit_amount-$partial_payments;
+	
+	$content = '<div class="info"><span class="label">Ticket #</span>'.l($credit_usage->order_id, 'admin/store/orders/'.$credit_usage->order_id).'</div>';
+
+	$content .= '<div class="info"><span class="label">Customer: </span>'.l($user->name, 'user/'.$user->uid.'/term-credits').'</div>';
+
+	$content .= '<div class="info"><span class="label">Invoice Total: </span>'.variable_get('uc_currency_sign', '$').number_format($credit_usage->credit_amount, 2).'</div>';
+
+	$content .= '<div class="info"><span class="label">Amount Settled: </span>'.variable_get('uc_currency_sign', '$').number_format($partial_payments, 2).'</div>';
+
+	$content .= '<div class="info"><span class="label">Amount Left: </span>'.variable_get('uc_currency_sign', '$').number_format($amount_left, 2).'</div>';
+
+	$form['settlements_table'] = array(
+		'#type' => 'markup',
+		'#value' => $settlements_table
+	);
+
+	$form['settlement'] = array(
+		'#type' => 'fieldset',
+		'#title' => 'Create Settlement',
+		'#attributes' => array('class' => 'settlement'),
+		'#tree' => true
+	);
+
+	$form['cuid'] = array(
+		'#type' => 'value',
+		'#value' => $cuid
+	);
+
+	$form['uid'] = array(
+		'#type' => 'value',
+		'#value' => $user->uid
+	);
+
+	$form['amount_left'] = array(
+		'#type' => 'value',
+		'#value' => $amount_left
+	);
+
+	$form['settlement']['info'] = array(
+		'#type' => 'markup',
+		'#value' => $content
+	);
+
+	$form['settlement']['amount'] = array(
+		'#type' => 'textfield',
+		'#title' => 'Amount Settled',
+		'#field_prefix' => '$',
+		'#default_value' => number_format($amount_left, 2, '.', '')
+	);
+
+	$form['settlement']['type'] = array(
+		'#type' => 'select',
+		'#title' => 'Settlement Type',
+		'#options' => _utc_get_payment_map(),
+		'#required' => true,
+	);
+
+	$form['settlement']['remarks'] = array(
+		'#type' => 'textarea',
+		'#title' => 'Remarks / Check Date'
+	);
+
+	$form['settlement']['submit'] = array(
+		'#type' => 'submit',
+		'#value' => 'Create Settlement'
+	);
+
+	return $form;
+}
+
+function _utc_get_payment_map() {
+	return array('cash' => 'Cash', 'check' => 'Check', 'money_order' => 'Money Order', 'post_check' => 'Post Dated Check');
+}
+
+function utc_perform_settlement_form_validate($form, &$form_state) {
+	$values = $form_state['values'];
+
+	//Take care of floating point precision issue to be very accurate.
+	$amount = number_format($values['settlement']['amount'], 2, '.', '')*100;
+	$left = number_format($values['amount_left'], 2, '.', '')*100;
+
+	if($amount > $left) {
+		form_set_error('settlement][amount', "Please input an amount less than the remaining balance of $".number_format($values['amount_left'], 2).".");
+	}
+}
+
+function utc_perform_settlement_form_submit($form, &$form_state) {
+	$values = $form_state['values'];
+
+	//Take care of floating point precision issue to be very accurate.
+	$amount = number_format($values['settlement']['amount'], 2, '.', '')*100;
+	$left = number_format($values['amount_left'], 2, '.', '')*100;
+
+	if($amount == $left) {
+		db_query("UPDATE {user_term_credits_usages} SET settled = '1' WHERE cuid = '%d'", $values['cuid']);
+	}
+
+	db_query("INSERT INTO {user_term_credits_settlements}
+		(cuid, settlement_amount, payment_type, remarks, settlement_date)
+		VALUES
+		('%d', '%s', '%s', '%s', '%s')", $values['cuid'], $values['settlement']['amount'], $values['settlement']['type'], $values['settlement']['remarks'], time());
+
+	drupal_set_message('Successfully created settlement.');
+
+	if($amount == $left) {
+		drupal_goto("user/".$values['uid']."/term-credits");
+	}
+}
+
+function utc_credit_report($order_user) {
+	$content = '<div class="user-term-credits-report">';
+	$content .= '<p><span>Allocated Credit: </span>'.$order_user->credit_limits->credit_limit_view.'</p>';
+	$content .= '<p><span>Available Credit: </span>'.$order_user->credit_limits->available_credit_view.'</p>';
+	$content .= '<p><span>Credit Term Limit: </span>'.$order_user->credit_limits->term_limit.' Days</p>';
+	$content .= utc_generate_credits_table($order_user->uid);
+	$content .= '</div>';
+	return $content;
+}
+
+function utc_generate_credits_table($uid = 0) {
+	drupal_add_css(drupal_get_path('module', 'user_term_credits').'/css/user_term_credits_table.css');
+	$query = "SELECT * FROM {user_term_credits_usages} utcu WHERE utcu.credit_amount > 0";
+	if($uid) {
+		$query .= ' AND utcu.uid = %d';
+	}
+
+	$query .= ' ORDER BY utcu.settled ASC, utcu.due_date ASC';
+
+	$credit_usages = pager_query($query, 50, 0, NULL, $uid);
+
+	$header = array('Customer', 'Order #', 'Credit Used', 'Term Limit', 'Purchase Date', 'Due Date', 'Settlements');
+	$rows = array();
+	$time = time();
+	while($credit_usage = db_fetch_object($credit_usages)) {
+		$user = user_load(array('uid' => $credit_usage->uid));
+
+		if($credit_usage->settled) {
+			$class = 'settled-true';
+		} else {
+			if($time > $credit_usage->due_date) {
+				$class = 'settled-exceeded';
+			} else {
+				$class = 'settled-false';
+			}
+		}
+
+		$rows[] = array('data' => array(
+			l($user->name, 'user/'.$user->uid),
+			l($credit_usage->order_id, 'admin/store/orders/'.$credit_usage->order_id),
+			variable_get('uc_currency_sign', '$').number_format($credit_usage->credit_amount, 2),
+			$credit_usage->term_limit.' Days',
+			date('n/j/Y h:iA', $credit_usage->consumption_date),
+			date('n/j/Y h:iA', $credit_usage->due_date),
+			utc_generate_settlements_table($credit_usage->cuid, $uid)
+		), 'class' => $class);
+	}
+
+	return theme('table', $header, $rows, array('class' => 'user-term-credits-table'));
+}
+
+function utc_generate_settlements_table($cuid = 0, $uid) {
+	$settlements = db_query("SELECT * FROM {user_term_credits_settlements} utcs WHERE utcs.cuid = %d", $cuid);
+	
+	$header = array();
+	$rows = array();
+	
+	while($settlement = db_fetch_object($settlements)) {
+		$header[] = date('n/j/Y', $settlement->settlement_date);
+		$rows[] = variable_get('uc_currency_sign', '$').number_format($settlement->settlement_amount, 2);
+	}
+
+	$rows = array(0 => $rows);
+
+	return theme('table', $header, $rows, array('class' => 'user-credits-settlements-table sticky-disabled')).l('View Settlements', 'user/'.$uid.'/term-credits/settle/'.$cuid, array('attributes' => array('class' => 'view-settlements')));
+}
+
+function utc_view_credit_report($order_user) {
+	global $user;
+	return user_access('administer user term credits') || ($order_user->uid == $user->uid && user_access('view own term credit report'));
+}
+
+function user_term_credits_user($op, &$edit, &$account, $category = NULL) {
+	if(($op == 'form' || $op == 'register') && user_access('edit user term credits')) {
+		$form = array();
+
+		$form['user_term_credits'] = array(
+			'#type' => 'fieldset',
+			'#title' => t('Credit Term'),
+			'#collapsible' => TRUE,
+			'#collapsed' => FALSE
+		);
+
+		$form['user_term_credits']['credit_limit'] = array(
+			'#type' => 'textfield',
+			'#title' => t('Credit Limit'),
+			'#required' => TRUE,
+			'#default_value' => 0,
+			'#size' => 20
+		);
+
+		$form['user_term_credits']['term_limit'] = array(
+			'#type' => 'select',
+			'#title' => t('Term Limit'),
+			'#options' => array(10 => '10 Days', 15 => '15 Days', 20 => '20 Days', 30 => '30 Days', 60 => '60 Days')
+		);
+		
+		$form['user_term_credits']['term_note'] = array(
+			'#type' => 'textfield',
+			'#title' => t('Term Notes'),
+			'#default_value' => '',
+			'#size' => 20
+		);
+
+		if($op == 'form') {
+			$credits = _user_term_credits_getCredits($account->uid);
+			$form['user_term_credits']['credit_limit']['#default_value'] = number_format($credits->credit_limit, 2, '.', '');
+			$form['user_term_credits']['term_limit']['#default_value'] = $credits->term_limit;
+			$form['user_term_credits']['term_note']['#default_value'] = $credits->term_note;
+		}
+
+		return $form;
+	} else if($op == 'validate' && user_access('edit user term credits')) {
+		if(!is_numeric($edit['credit_limit'])) {
+			form_set_error('credit_limit', 'A numerical credit limit is required.');
+		}
+	} elseif(($op == 'insert' || $op == 'update') && user_access('edit user term credits')) {
+		_user_term_credits_saveCredits($account->uid, $edit['credit_limit'], $edit['term_limit'], $edit['term_note']);
+	} elseif($op == 'load') {
+		$account->credit_limits = _user_term_credits_getCredits($account->uid);
+	}
+}
+
+function _user_term_credits_saveCredits($uid, $creditLimit, $termLimit, $termNote) {
+	db_query("REPLACE INTO {user_term_credits_limits} VALUES(%d, '%s', '%s', '%s');", $uid, $creditLimit, $termLimit, $termNote);
+}
+
+function _user_term_credits_getCredits($uid) {
+	$credits = db_fetch_object(db_query("SELECT utcl.credit_limit, utcl.term_limit, utcl.term_note FROM {user_term_credits_limits} utcl WHERE utcl.uid = %d", $uid));
+	
+	if(empty($credits->credit_limit)) {
+		$credits->credit_limit = 0;
+	} else {
+		$credits->credit_limit = (float)$credits->credit_limit;
+	}
+	
+	if(empty($credits->term_limit)) {
+		$credits->term_limit = 10;
+	} else {
+		$credits->term_limit = (int)$credits->term_limit;
+	}
+	$sign = variable_get('uc_currency_sign', '$');
+	
+	$outstanding_payments = db_result(db_query("SELECT SUM(utcu.credit_amount) FROM {user_term_credits_usages} utcu WHERE utcu.uid = %d AND utcu.settled = 0", $uid));
+
+	$partial_payments = db_result(db_query("SELECT SUM(utcs.settlement_amount) FROM {user_term_credits_settlements} utcs INNER JOIN {user_term_credits_usages} utcu ON utcu.cuid = utcs.cuid WHERE utcu.uid = %d AND utcu.settled = 0", $uid));
+	
+	$credits->available_credit = (float)$credits->credit_limit - (float)$outstanding_payments + (float)$partial_payments;
+	$credits->pending_payments = (float)$outstanding_payments - (float)$partial_payments;
+	
+	$credits->pending_payments_view = $sign.number_format($credits->pending_payments, 2);
+	$credits->available_credit_view = $sign.number_format($credits->available_credit, 2);
+	$credits->credit_limit_view = $sign.number_format($credits->credit_limit, 2);
+
+	return $credits;
+}
+
+function user_term_credits_payment_method() {
+	$methods[] = array(
+		'id' => 'pos_term_credit',
+		'name' => t('POS Term Credit'),
+		'title' => t('Term Credit through Point of Sales system'),
+		'desc' => t('Pay with users assigned credit, Point of Sales only.'),
+		'callback' => 'uberpos_method_payment_term_credit',
+		'weight' => 1,
+		'checkout' => TRUE,
+		'no_gateway' => TRUE,
+	);
+
+	return $methods;
+}
+
+function user_term_credits_preprocess_node(&$variables) {
+  $node = $variables['node'];
+  switch ($node->type) {
+    case 'profile':
+      if (arg(0) == 'node' && arg(1) == $node->nid && arg(2) == "") {
+      // If we are postitive we are on node/N where N is the NID of a profile
+      // node, then redirect to the user profile page instead.
+      drupal_goto("user/".$node->uid);
+    }
+  }
+}
+
+/*UBER POS*/
+
+//Turn off all uberpos dependencies.
+/*
+function uberpos_method_payment_term_credit($op, &$arg1) {
+
+}
+
+function user_term_credits_uberpos_buttons() {
+  $buttons = array();
+  if(user_access('use user term credits')) {
+ 	 $buttons[] = array(
+ 	   'section' => 'left',
+ 	   'text' => t('TERM CREDIT'),
+ 	   'weight' => 10,
+ 	   'attributes' => array(
+ 	     'onclick' => "uberpos_add_text_submit('TC'); return false;",
+ 	     'class' => 'uberpos-button-cash up-button-submit',
+ 	   ),
+ 	   'help' => 'command.ca',
+ 	 );
+  }
+  
+  return $buttons;
+}
+
+function user_term_credits_uberpos_command() {
+	$cmds = array();
+	if(user_access('use user term credits')) {
+		$cmds = array('user_term_credits_uberpos_command_term_credit');
+	}
+	return $cmds;
+}
+
+function user_term_credits_uberpos_command_term_credit(&$order, $item, $input, &$js) {
+	if($input == 'TC') {
+		
+		$balance = uc_payment_balance($order);
+		
+		// If they don't enter in an amount, default to the total owed.
+      	$prec = variable_get('uc_currency_prec', 2);
+      	$amount = round($balance, $prec);
+
+		if($order->uid > 0) {
+			$user = user_load(array('uid' => $order->uid));
+			if($amount <= (float)$user->credit_limits->available_credit) {
+				$user_term_credits_usages = new stdClass();
+				$user_term_credits_usages->uid = $user->uid;
+				$user_term_credits_usages->order_id = $order->order_id;
+				$user_term_credits_usages->credit_amount = $amount;
+				$user_term_credits_usages->term_limit = $user->credit_limits->term_limit;
+				$user_term_credits_usages->consumption_date = time();
+				$user_term_credits_usages->due_date = time() + (((int)$user->credit_limits->term_limit)*86400);
+				$user_term_credits_usages->settled = 0;
+
+				drupal_write_record('user_term_credits_usages', $user_term_credits_usages);
+				
+				uc_payment_enter($order->order_id, 'pos_term_credit', $balance, $order->uid, NULL, t('POS TERM Credit'));
+				uc_order_update_status($order->order_id, 'pos_completed');
+				$order = uc_order_load($order->order_id);
+				uberpos_clear_message(t('Thank you for shopping!', array('clear_order' => TRUE)));
+			} else {
+				uberpos_clear_message(t("Order exceeds customer's credit limit of ".$user->credit_limits->credit_limit_view.'.'));
+				return 'TC';
+			}
+		} else {
+			uberpos_clear_message(t("Walk-in customers do not qualify for credit purchases."));
+		}
+
+		return 'TC';
+	}
+}
+*/

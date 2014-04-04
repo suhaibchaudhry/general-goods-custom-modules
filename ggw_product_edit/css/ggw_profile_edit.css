@@ -1,0 +1,63 @@
+#page {
+	min-width: 960px;	
+}
+
+#node-form fieldset.hidden-fieldset, #node-form #edit-pkg-qty-wrapper, #node-form #edit-default-qty-wrapper, #node-form #edit-ordering-wrapper, #node-form .hidden-form-element, #edit-shippable-wrapper label, #edit-weight-wrapper label, #edit-weight-units-wrapper label, #node-form #edit-shippable-wrapper {
+	display: none;	
+}
+
+#edit-field-bin-location-0-value-wrapper, #edit-field-prod-packing-0-value-wrapper, #edit-field-prod-form-0-value-wrapper, #edit-field-item-type-value-wrapper, #edit-field-prod-purchase-unit-0-value-wrapper, #edit-field-prod-pcs-per-unit-0-value-wrapper {
+	width: 25%;
+	float: left;
+	margin: 0 1% 10px 0;
+}
+
+#edit-field-prod-form-0-value-wrapper, #edit-field-prod-pcs-per-unit-0-value-wrapper {
+	margin: 0 0 10px;	
+}
+
+
+fieldset.supplying-vendor {
+	margin: 10px 0 12px;	
+}
+
+fieldset.supplying-vendor select, fieldset.supplying-vendor select#edit-supplier {
+	width: 100%;
+	height: 300px;	
+}
+
+fieldset.product-field {
+	width: 100%;	
+}
+
+.autofill-field {
+	position: relative;
+}
+.autofill-field a {
+	position: absolute;
+	right: 8px;
+	top: -23px;
+	width: 19px;
+	height: 18px;
+	text-indent: -9999px;
+	display: block;
+	background: url(../images/iconsprite.png) no-repeat 2px 0;
+}
+.autofill-field a.clear {
+	right: 30px;
+	background-position: -17px 0;
+	top: -22px;
+}
+
+.autofill-field a:hover {
+	opacity: .8;	
+}
+fieldset.publishing-options {
+	margin: 15px 0;
+}
+#edit-cost-wrapper {
+	display: none;
+}
+input#edit-role-prices-12, input#edit-role-prices-13, input#edit-role-prices-14, input#edit-role-prices-15 {
+	width: 95%;
+}

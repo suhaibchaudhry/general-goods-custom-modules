@@ -1,0 +1,9 @@
+<?php
+function ggw_profile_edit_init() {
+	//Customize Profile
+	if(arg(0) == 'user' && arg(1) == 'register') {
+		drupal_add_css(drupal_get_path('module', 'ggw_profile_edit').'/css/field_hide.css');
+	} else if(arg(0) == 'admin' && arg(1) == 'user' && arg(2) == 'user' && arg(3) == 'create') {
+		drupal_add_js(drupal_get_path('module', 'ggw_profile_edit').'/js/conditional_fieldsets.js');
+	}
+}

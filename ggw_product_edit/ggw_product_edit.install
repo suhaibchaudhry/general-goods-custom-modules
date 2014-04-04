@@ -1,0 +1,36 @@
+<?php
+function ggw_product_edit_schema() {
+	$schema = array();
+
+	$schema['ggw_product_vendors'] = array(
+		'description' => 'Stores vendors for products',
+		'fields' => array(
+			'product_nid' => array(
+        		'description' => 'Node ID of a product.',
+        		'type' => 'int',
+        		'unsigned' => TRUE,
+        		'not null' => TRUE,
+        		'default' => 0
+      		),
+			'vendor_uid' => array(
+        		'description' => 'Vendor ID of incomming stock adjustment.',
+        		'type' => 'int',
+        		'not null' => FALSE,
+				'unsigned' => TRUE
+        	)
+		),
+		'indexes' => array(
+    		'nid' => array('product_nid'),
+    	)
+	);
+
+	return $schema;
+}
+
+function ggw_product_edit_install() {
+	drupal_install_schema('ggw_product_edit');
+}
+
+function ggw_product_edit_uninstall() {
+	drupal_uninstall_schema('ggw_product_edit');
+}

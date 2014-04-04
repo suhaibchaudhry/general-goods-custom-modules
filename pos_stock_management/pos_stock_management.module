@@ -1,0 +1,156 @@
+<?php
+//Setup triggers for purchases
+
+function pos_stock_management_perm() {
+	return array('administer pos stock management', 'manipulate pos stock management');	
+}
+
+/**
+ * Implements hook_menu().
+ */
+function pos_stock_management_menu() {
+  $items = array();
+
+  $items['admin/store/settings/pos-stock-management'] = array(
+    'title' => 'POS Stock Management settings',
+    'description' => 'View the stock management settings.',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('pos_stock_management_settings_form'),
+    'access arguments' => array('administer pos stock management'),
+    'type' => MENU_NORMAL_ITEM,
+    'file' => 'includes/pos_stock_management.admin.inc'
+  );
+    
+  $items['admin/store/purchase-orders'] = array(
+    'title' => 'Purchase Orders',
+    'description' => 'View and manage purchase orders.',
+    'page callback' => 'pos_stock_management_purchase_orders',
+    'access arguments' => array('administer pos stock management'),
+    'type' => MENU_NORMAL_ITEM,
+    'file' => 'includes/pos_stock_management.admin.inc'
+  );
+  
+  $items['admin/store/purchase-orders/item/%'] = array(
+    'title' => 'Product Add Item',
+    'description' => 'AHAH callback to return markup for PO line item.',
+    'page callback' => 'pos_stock_management_prod_po_lineitem',
+	'page arguments' => array(4),
+    'access arguments' => array('administer pos stock management'),
+    'type' => MENU_CALLBACK,
+    'file' => 'includes/pos_stock_management.admin.inc'
+  );
+  
+  $items['admin/store/purchase-orders/edit/%'] = array(
+    'title' => 'Edit Purchase Order',
+    'description' => 'Edit a purchase orders.',
+    'page callback' => 'pos_stock_management_purchase_order_edit',
+	'page arguments' => array(4),
+    'access arguments' => array('administer pos stock management'),
+    'type' => MENU_CALLBACK,
+    'file' => 'includes/pos_stock_management.admin.inc'
+  );
+  
+  $items['node/%node/edit/pos-stock-management'] = array(
+    'title' => 'Product Stock Management',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('pos_stock_management_edit_form', 1),
+    'access callback' => 'pos_stock_management_product_access',
+    'access arguments' => array(1),
+    'weight' => 10,
+    'type' => MENU_LOCAL_TASK,
+    'file' => 'includes/pos_stock_management.admin.inc'
+  );
+  
+  $items['admin/store/purchase-orders/delete/%'] = array(
+    'title' => 'Delete Purchase Order',
+    'description' => 'Delete a purchase orders.',
+    'page callback' => 'drupal_get_form',
+	'page arguments' => array('pos_stock_management_purchase_order_delete', 4),
+    'access arguments' => array('administer pos stock management'),
+    'type' => MENU_CALLBACK,
+    'file' => 'includes/pos_stock_management.admin.inc'
+  );
+
+  return $items;
+}
+
+/**
+ * Access callback for node/%node/edit/stock.
+ */
+function pos_stock_management_product_access($node) {
+  if ($node->type == 'product_kit') {
+    return FALSE;
+  }
+
+  return uc_product_is_product($node) && node_access('update', $node) && user_access('manipulate pos stock management');
+}
+
+function pos_stock_management_last_reset($nid) {
+  return db_result(db_query("SELECT `timestamp` FROM pos_in_stock_management WHERE reset = '1' AND product_nid = '%d' ORDER BY `timestamp` DESC", $nid));
+}
+
+function pos_stock_management_quantity($nid) {
+  $timestamp = pos_stock_management_last_reset($nid);
+	$quantity = db_result(db_query("SELECT SUM(stock_adjustment) FROM {pos_in_stock_management} WHERE product_nid = '%d' AND `timestamp` >= '%s'", $nid, $timestamp));
+	$sold = db_result(db_query("SELECT SUM(stock_adjustment) FROM {pos_out_stock_management} WHERE product_nid = '%d' AND `timestamp` >= '%s'", $nid, $timestamp));
+
+	return $quantity-$sold;
+}
+
+function pos_stock_management_average_cost($nid) {
+  $timestamp = pos_stock_management_last_reset($nid);
+	return db_result(db_query("SELECT AVG(unit_cost) FROM {pos_in_stock_management} WHERE product_nid = '%d' AND `timestamp` >= '%s'", $nid, $timestamp));
+}
+
+function pos_stock_management_status($nid) {
+  $quantity = pos_stock_management_quantity($nid);
+  $cost = pos_stock_management_average_cost($nid);
+  return array('quantity' => $quantity, 'cost' => $cost);
+}
+
+function pos_stock_management_history($nid) {
+  $status = pos_stock_management_status($nid);
+	$content .= '<p class="stock-status"><strong>Quantity on Hand:</strong> '.$status['quantity'].'</p>';
+	$content .= '<p class="stock-status"><strong>Average Purchase Unit Cost:</strong> '.uc_currency_format($status['cost']).'</p>';
+	$predicates = array('No', 'Yes');
+	$sql = "SELECT * FROM {pos_in_stock_management} pism LEFT JOIN {users} u ON pism.vendor_uid = u.uid LEFT JOIN {node} n on u.uid = n.uid WHERE pism.product_nid = %d ORDER BY pism.se_id DESC";
+	$stock_histories = db_query($sql, $nid);
+	
+	$header = array('Quantity Purchased', 'Vendor', 'Purchase Unit Cost', 'Date', 'Reset', 'Notes');
+	$data = array();
+	while($stock_history = db_fetch_object($stock_histories)) {
+		if($stock_history->uid == 0) {
+			$user = 'n/a';
+		} else {
+			$user = l($stock_history->title, 'user/'.$stock_history->uid, array('attributes' => array('target' => '_new')));	
+		}
+		$data[] = array($stock_history->stock_adjustment,
+      $user, 	
+      uc_currency_format($stock_history->unit_cost),
+      date('n/j/Y', $stock_history->timestamp),
+      $predicates[$stock_history->reset],
+      $stock_history->stock_comment
+    );
+	}
+	
+	$content .= theme('table', $header, $data);
+	return $content;
+}
+
+function pos_stock_management_vendors($nid) {
+	$vendors = array(0 => 'No Vendor Associated');
+	$sql = "SELECT n.uid, n.title FROM {node} n INNER JOIN {users_roles} ur ON n.uid = ur.uid";
+	if($nid !== FALSE) {
+		$sql .= " INNER JOIN {ggw_product_vendors} gpv ON n.uid = gpv.vendor_uid";
+		$sql .= " WHERE n.type = 'profile' AND gpv.product_nid = %d AND ur.rid = %d ORDER BY n.title ASC";
+		$users = db_query($sql, $nid, variable_get('psm_vendor_role', 2));
+	} else {
+		$sql .= " WHERE n.type = 'profile' AND ur.rid = %d ORDER BY n.title ASC";
+		$users = db_query($sql, variable_get('psm_vendor_role', 2));
+	}
+	while($user = db_fetch_object($users)) {
+		$vendors[$user->uid] = $user->title;
+	}
+
+	return $vendors;
+}

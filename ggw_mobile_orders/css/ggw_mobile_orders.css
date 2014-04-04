@@ -1,0 +1,9 @@
+table.mobile-orders-table {
+	margin: 10px 0 0;	
+}
+div.ggw-order-details .order-detail {
+	margin: 4px 0;
+}
+div.ggw-order-details .order-detail span.label {
+	font-weight: bold;	
+}

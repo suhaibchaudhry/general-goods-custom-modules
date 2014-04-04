@@ -1,0 +1,210 @@
+<?php
+function pos_stock_management_schema() {
+	$schema = array();
+
+	//Incompatible with attributes
+	$schema['pos_in_stock_management'] = array(
+		'description' => 'Incomming Stock adjustments',
+		'fields' => array(
+			'se_id' => array(
+        		'description' => 'Stock entry id.',
+        		'type' => 'serial',
+        		'unsigned' => TRUE,
+        		'not null' => TRUE
+      		),
+			'product_nid' => array(
+        		'description' => 'Node ID of a product.',
+        		'type' => 'int',
+        		'unsigned' => TRUE,
+        		'not null' => TRUE,
+        		'default' => 0
+      		),
+			'stock_adjustment' => array(
+				'type' => 'int',
+				'not null' => TRUE,
+				'default' => 0,
+				'description' => "Stock adjustment for this transaction."
+			),
+			'vendor_uid' => array(
+        		'description' => 'Vendor ID of incomming stock adjustment.',
+        		'type' => 'int',
+        		'not null' => FALSE,
+				'unsigned' => TRUE
+        	),
+			'unit_cost' => array(
+        		'description' => 'The price paid for the ordered product.',
+        		'type' => 'numeric',
+        		'precision' => 16,
+        		'scale' => 5,
+        		'not null' => FALSE,
+        		'default' => 0.0
+      		),
+			'stock_comment' => array(
+				'description' => 'Comment related to stock.',
+        		'type' => 'text',
+			),
+			'reset' => array(
+				'type' => 'int',
+				'not null' => TRUE,
+				'size' => 'tiny',
+				'default' => 0,
+				'description' => "Select to make this a quantity reset."
+			),
+			'timestamp' => array(
+				'description' => 'The Unix timestamp.',
+        		'type' => 'int',
+        		'size' => 'big',
+        		'not null' => TRUE,
+        		'default' => 0
+			)
+		),
+		'primary key' => array('se_id'),
+		'indexes' => array(
+			'product_nid' => array('product_nid'),
+			'reset' => array('reset', 'product_nid')
+		)
+	);
+
+	$schema['pos_out_stock_management'] = array(
+		'description' => 'Outgoing Stock adjustments',
+		'fields' => array(
+			'se_id' => array(
+        		'description' => 'Stock entry id.',
+        		'type' => 'serial',
+        		'unsigned' => TRUE,
+        		'not null' => TRUE
+      		),
+			'product_nid' => array(
+        		'description' => 'Node ID of a product.',
+        		'type' => 'int',
+        		'unsigned' => TRUE,
+        		'not null' => TRUE,
+        		'default' => 0
+      		),
+			'stock_adjustment' => array(
+				'type' => 'int',
+				'not null' => TRUE,
+				'default' => 0,
+				'description' => "Stock adjustment for this transaction."
+			),
+			'unit_price' => array(
+        		'description' => 'The price paid per unit for the ordered product.',
+        		'type' => 'numeric',
+        		'precision' => 16,
+        		'scale' => 5,
+        		'not null' => TRUE,
+        		'default' => 0.0
+      		),
+      		'timestamp' => array(
+				'description' => 'The Unix timestamp.',
+        		'type' => 'int',
+        		'size' => 'big',
+        		'not null' => TRUE,
+        		'default' => 0
+			)
+		),
+		'primary key' => array('se_id'),
+		'indexes' => array(
+			'product_nid' => array('product_nid')
+		)
+	);
+
+	$schema['pos_stock_management_po'] = array(
+		'description' => 'Purchase Orders',
+		'fields' => array(
+			'po_id' => array(
+        		'description' => 'Stock entry id.',
+        		'type' => 'serial',
+        		'unsigned' => TRUE,
+        		'not null' => TRUE
+      		),
+			'po_ref' => array(
+				'description' => 'The title of this pruchase order.',
+        		'type' => 'varchar',
+        		'length' => 255,
+        		'not null' => TRUE,
+        		'default' => ''
+			),
+			'created' => array(
+				'description' => 'The Unix timestamp when the po was created.',
+        		'type' => 'int',
+        		'size' => 'big',
+        		'not null' => TRUE,
+        		'default' => 0
+			),
+			'changed' => array(
+				'description' => 'The Unix timestamp when the po was recently saved.',
+        		'type' => 'int',
+        		'size' => 'big',
+        		'not null' => TRUE,
+        		'default' => 0
+			),
+			'submitted' => array(
+				'type' => 'int',
+				'not null' => TRUE,
+				'default' => 0,
+				'size' => 'tiny',
+				'description' => 'Indicates whether the purchase order has been submitted to stock or not.'
+			)
+		),
+		'primary key' => array('po_id')
+	);
+	
+	$schema['pos_stock_management_po_items'] = array(
+		'description' => 'Purchase order items',
+		'fields' => array(
+			'po_item_id' => array(
+        		'description' => 'Stock entry id.',
+        		'type' => 'serial',
+        		'unsigned' => TRUE,
+        		'not null' => TRUE
+      		),
+			'po_id' => array(
+        		'description' => 'Stock entry id.',
+        		'type' => 'int',
+        		'unsigned' => TRUE,
+        		'not null' => TRUE
+      		),
+			'product_nid' => array(
+        		'description' => 'Stock entry id.',
+        		'type' => 'int',
+        		'unsigned' => TRUE,
+        		'not null' => TRUE
+      		),
+			'stock_adjustment' => array(
+				'type' => 'int',
+				'not null' => TRUE,
+				'default' => 0,
+				'description' => "Stock adjustment for this transaction."
+			),
+			'unit_cost' => array(
+        		'description' => 'The price paid for the ordered product.',
+        		'type' => 'numeric',
+        		'precision' => 16,
+        		'scale' => 5,
+        		'not null' => FALSE,
+        		'default' => 0.0
+      		),
+			'vendor_uid' => array(
+        		'description' => 'Vendor ID of incomming stock adjustment.',
+        		'type' => 'int',
+        		'not null' => FALSE,
+				'unsigned' => TRUE
+        	),
+		),
+		'primary key' => array('po_item_id'),
+		'indexes' => array(
+			'po_id' => array('product_nid')
+		)
+	);
+
+	return $schema;
+}
+
+function pos_stock_management_install() {
+	drupal_install_schema('pos_stock_management');
+}
+
+function pos_stock_management_uninstall() {
+	drupal_uninstall_schema('pos_stock_management');
+}

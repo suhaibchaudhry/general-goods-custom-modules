@@ -1,0 +1,41 @@
+<?php
+function ggw_qr_codes_requirements($phase) {
+	$requirements = array();
+	$t = get_t();
+
+	if($phase == 'runtime') {
+		/*
+	 	// Check for phpqrcode library
+		if(file_exists(libraries_get_path('phpqrcode'))) {
+			$requirements['phpqrcode'] = array(
+			  'title' => $t('PHP QR Code'),
+			  'description' => 'Download the latest libarary version of phpqrcode ('.l('http://phpqrcode.sourceforge.net/', 'http://phpqrcode.sourceforge.net/').') and place in your libraries sites/all/libraries folder.',
+			  'severity' => REQUIREMENT_OK
+			);
+		} else {
+			$requirements['phpqrcode'] = array(
+			  'title' => $t('PHP QR Code'),
+			  'description' => 'Download the latest libarary version of phpqrcode ('.l('http://phpqrcode.sourceforge.net/', 'http://phpqrcode.sourceforge.net/').') and place in your libraries sites/all/libraries folder.',
+			  'severity' => REQUIREMENT_ERROR
+			);
+		}
+		*/
+		
+		// Check for tcpdf library
+		if(file_exists(libraries_get_path('tcpdf'))) {
+			$requirements['tcpdf'] = array(
+			  'title' => $t('TCPDF Library'),
+			  'description' => 'Download the latest libarary version of '.l('http://phpqrcode.sourceforge.net/', 'TCPDF').', and place in your libraries sites/all/libraries/tcpdf folder.',
+			  'severity' => REQUIREMENT_OK
+			);
+		} else {
+			$requirements['tcpdf'] = array(
+			  'title' => $t('TCPDF Library'),
+			  'description' => 'Download the latest libarary version of '.l('http://phpqrcode.sourceforge.net/', 'TCPDF').', and place in your libraries sites/all/libraries/tcpdf folder.',
+			  'severity' => REQUIREMENT_ERROR
+			);
+		}
+	}
+	
+	return $requirements;
+}

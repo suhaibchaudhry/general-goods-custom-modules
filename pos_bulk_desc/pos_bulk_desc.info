@@ -1,0 +1,4 @@
+name = Pos Bulk Description
+description = Keeps presistent descriptions after imports, and allows bulk editing.
+package = General Goods POS
+core = 6.x

@@ -1,0 +1,23 @@
+.ui-dialog .ui-dialog-content {
+	padding: .5em 2em;	
+}
+
+#pos-dialog .form-item {
+	float: left;
+	margin: 0 133px 0 0	
+}
+#pos-dialog .form-item:nth-child(3n) {
+	margin: 0;
+}
+
+#pos-dialog #pos-search-results table tr {
+	cursor: pointer;	
+}
+
+#pos-dialog #pos-search-results table tr:hover {
+	background: #CCC;
+}
+
+#pos-dialog #pos-search-results p {
+	font-size: 10px;	
+}

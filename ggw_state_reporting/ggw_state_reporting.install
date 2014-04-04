@@ -1,0 +1,80 @@
+<?php
+function ggw_state_reporting_schema() {
+	$schema = array();
+
+	$schema['ggw_state_reporting_terms'] = array(
+		'description' => 'Store tax and reporting settings on each product department term.',
+		'fields' => array(
+			'vid' => array(
+				'type' => 'int',
+				'unsigned' => TRUE,
+				'not null' => TRUE
+			),
+			'setting' => array(
+				'type' => 'int',
+				'unsigned' => TRUE,
+				'not null' => TRUE,
+				'default' => 0,
+				'size' => 'tiny'
+			),
+			'packaging' => array(
+				'type' => 'varchar',
+				'length' => 255,
+				'description' => "Reported packaging of the category.",
+				'not null' => TRUE
+			),
+			'invoice_category' => array(
+				'type' => 'varchar',
+				'length' => 255,
+				'description' => "Invoice main category for each product department.",
+				'not null' => TRUE
+			),
+			'retail_markup' => array(
+        		'description' => 'The amount of retail markup suggestion applied to the category.',
+        		'type' => 'numeric',
+        		'precision' => 16,
+        		'scale' => 5,
+        		'not null' => FALSE,
+        		'default' => 0.0
+      		)
+		),
+		'primary key' => array('vid'),
+		'indexes' => array(
+			'invoice_category' => array('invoice_category')
+		)
+	);
+
+	$schema['ggw_state_reporting_taxes'] = array(
+		'description' => 'Store user tax bracket.',
+		'fields' => array(
+			'uid' => array(
+				'type' => 'int',
+				'unsigned' => TRUE,
+				'not null' => TRUE
+			),
+			'retail_tax' => array(
+				'type' => 'varchar',
+				'length' => 5,
+				'description' => "Retail tax predicate.",
+				'not null' => TRUE
+			),
+			'wholesale_tax' => array(
+				'type' => 'varchar',
+				'length' => 5,
+				'description' => "Wholesale tax predicate.",
+				'not null' => TRUE
+			)
+		),
+		'primary key' => array('uid')
+	);
+
+	return $schema;
+}
+
+function ggw_state_reporting_install() {
+	drupal_install_schema('ggw_state_reporting');
+}
+
+function ggw_state_reporting_uninstall() {
+	drupal_uninstall_schema('ggw_state_reporting');
+}

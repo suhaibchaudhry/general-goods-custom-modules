@@ -1,0 +1,361 @@
+<?php
+define("RETAIL_TAX_ID", 2);
+define("WHOLESALE_TAX_ID", 5);
+
+function ggw_state_reporting_perm() {
+	return array('edit customer taxes');
+}
+/*Taxonomy Term Configurations*/
+function ggw_state_reporting_menu() {
+  $items = array();
+
+  $items['admin/settings/tobacco-reporting'] = array(
+    'title' => t('State and MSA Tobacco Reporting'),
+    'description' => t('Setup state and MSA Reporting.'),
+    'page callback' => 'ggw_state_reporting_admin',
+    'access arguments' => array('access site reports'),
+    'type' => MENU_NORMAL_ITEM
+   );
+   
+   $items['admin/settings/tobacco-reporting/state'] = array(
+    'title' => t('State Reporting Callback'),
+    'description' => t('Get tobacco report.'),
+    'page callback' => 'ggw_state_reporting_download_state',
+    'access arguments' => array('access site reports'),
+    'type' => MENU_CALLBACK
+   );
+   
+   $items['admin/settings/tobacco-reporting/msa'] = array(
+    'title' => t('MSA Reporting Callback'),
+    'description' => t('Get tobacco report.'),
+    'page callback' => 'ggw_state_reporting_download_msa',
+    'access arguments' => array('access site reports'),
+    'type' => MENU_CALLBACK
+   );
+
+   $items['admin/store/reports/pos-sales'] = array(
+   	'title' => t('Daily Sales Report'),
+   	'description' => t('Get daily pos sales report.'),
+   	'page callback' => '_ggw_pos_report_daily',
+   	'access arguments' => array('access site reports'),
+   	'type' => MENU_NORMAL_ITEM,
+   	'file' => 'includes/sales_reports.inc'
+   );
+
+  return $items;
+}
+
+function ggw_state_reporting_admin() {
+	return l('State Report', 'admin/settings/tobacco-reporting/state').'<br />'.l('MSA Report', 'admin/settings/tobacco-reporting/msa');	
+}
+
+function ggw_state_reporting_user($op, &$edit, &$account, $category = NULL) {
+	if(($op == 'form' || $op == 'register') && user_access('edit customer taxes')) {
+		$tax_options = array('Y' => 'Yes', 'N' => 'No');
+		$form = array();
+
+		$form['user_tax_settings'] = array(
+			'#type' => 'fieldset',
+			'#title' => t('Tax Settings'),
+			'#collapsible' => TRUE,
+			'#collapsed' => FALSE
+		);
+
+		$form['user_tax_settings']['retail_tax'] = array(
+			'#type' => 'radios',
+			'#title' => t('Retail Taxable'),
+			'#required' => TRUE,
+			'#default_value' => 0,
+			'#options' => $tax_options
+		);
+
+		$form['user_tax_settings']['wholesale_tax'] = array(
+			'#type' => 'radios',
+			'#title' => t('Wholesale Taxable'),
+			'#required' => TRUE,
+			'#default_value' => 0,
+			'#options' => $tax_options
+		);
+
+		if($op == 'form') {
+			$tax_settings = _ggw_state_reporting_tax_settings($account->uid);
+			$form['user_tax_settings']['retail_tax']['#default_value'] = $tax_settings->retail_tax;
+			$form['user_tax_settings']['wholesale_tax']['#default_value'] = $tax_settings->wholesale_tax;
+		}
+
+		return $form;
+	} elseif(($op == 'insert' || $op == 'update') && user_access('edit customer taxes')) {
+		_ggw_state_reporting_save_tax_settings($account->uid, $edit['retail_tax'], $edit['wholesale_tax']);
+	} elseif($op == 'load') {
+		$account->tax_settings = _ggw_state_reporting_tax_settings($account->uid);
+	}
+}
+
+function _ggw_state_reporting_tax_settings($uid) {
+	return db_fetch_object(db_query("SELECT retail_tax, wholesale_tax FROM {ggw_state_reporting_taxes} rt WHERE rt.uid = '%d'", $uid));
+}
+
+function _ggw_state_reporting_save_tax_settings($uid, $retail_tax, $wholesale_tax) {
+	db_query("REPLACE INTO {ggw_state_reporting_taxes} VALUES ('%d', '%s', '%s')", $uid, $retail_tax, $wholesale_tax);
+}
+
+function ggw_state_reporting_download_state() {
+		//db_query("SELECT * FROM {uc_order_products} uop INNER JOIN {term_node} tn ON uop.nid = tn.nid INNER JOIN {ggw_state_reporting_terms} srt ON tn.tid = srt.vid WHERE tn.tid = %d AND srt.setting IN ('1', '3')", $tid);
+		header("Content-type: text/csv");
+		header('Content-disposition: attachment;filename=statereport.csv');
+
+		$report_entries = db_query("SELECT pn.title AS company, ctp.field_tax_id_value, ctp.field_tobacco_permit_id_value, ctp.field_company_address_street1, ctp.field_company_address_street2, ctp.field_company_address_zip, ctp.field_company_address_city, ctp.field_company_address_state, uo.order_id, ls.title, ls.tQty, uo.uid, ls.tPrice, ls.packaging, uo.order_total, ls.name FROM (SELECT order_id, title, td.name, srt.packaging, SUM(qty) AS tQty, SUM(price) as tPrice FROM {uc_order_products} uop INNER JOIN {term_node} tn ON uop.nid = tn.nid INNER JOIN {term_data} td ON tn.tid = td.tid INNER JOIN {ggw_state_reporting_terms} srt ON tn.tid = srt.vid WHERE srt.setting IN ('1', '3') GROUP BY order_id, tn.tid) ls INNER JOIN {uc_orders} uo ON ls.order_id = uo.order_id INNER JOIN {node} pn ON pn.uid = uo.uid INNER JOIN {content_type_profile} ctp ON pn.vid = ctp.vid WHERE uo.order_status = 'pos_completed' AND pn.type = 'profile'");
+		while($report_entry = db_fetch_object($report_entries)) {
+			$content .= implode(', ', array(
+				'93044639',
+				$report_entry->field_tax_id_value,
+				$report_entry->company,
+				$report_entry->field_company_address_street1.' '.$report_entry->field_company_address_street2,
+				$report_entry->field_company_address_city,
+				$report_entry->field_company_address_state,
+				$report_entry->field_company_address_zip,
+				$report_entry->name,
+				$report_entry->packaging,
+				$report_entry->field_tobacco_permit_id_value,
+				$report_entry->tQty,
+				round($report_entry->tPrice)
+			))."\n";
+		}
+
+		print $content;
+}
+
+function ggw_state_reporting_download_msa() {
+	header("Content-type: text/csv");
+	header('Content-disposition: attachment;filename=msareport.csv');
+
+	$report_entries = db_query("SELECT title, ucp.model, td.name, srt.packaging, SUM(qty) AS tQty, SUM(price) as tPrice FROM uc_order_products uop INNER JOIN term_node tn ON uop.nid = tn.nid INNER JOIN term_data td ON tn.tid = td.tid INNER JOIN ggw_state_reporting_terms srt ON tn.tid = srt.vid INNER JOIN uc_products ucp ON uop.nid = ucp.nid WHERE srt.setting IN ('2', '3') GROUP BY uop.nid");
+
+	$content = "HID14047001TOB  W20121221GENERAL GOODS WHOLESALE         8000 HARWIN, SUITE 200 HOUSTON, TX 77036                                                  TOBACO ID: 93044639                                                                 7137803636     7137801718                                                            000100000002201212261\n";
+	while($report_entry = db_fetch_object($report_entries)) {
+		$content .= 'BID	'.$report_entry->model.$report_entry->title.'                                                                               000024N75    003261                                                                                                 003 0000162.00'."\n";
+	
+	}
+	//return $content;
+	print $content;
+}
+
+function ggw_state_reporting_invoice_categories($vid) {
+	$invoice_categories = db_query("SELECT name FROM term_data WHERE vid = '%d'", $vid);
+	$categories = array();
+
+	while($invoice_category = db_fetch_object($invoice_categories)) {
+		$categories[$invoice_category->name] = $invoice_category->name;
+	}
+
+	return $categories;
+}
+
+function ggw_state_reporting_form_alter(&$form, &$form_state, $form_id) {
+	if($form_id == 'taxonomy_form_term' && $form['vid']['#value'] == 7) {
+		$form['submit']['#weight'] = 2;
+		$form['delete']['#weight'] = 3;
+
+		$form['reporting-options'] = array(
+			'#type' => 'fieldset',
+			'#title' => t('Reporting Options'),
+			'#collapsible' => TRUE,
+			'#collapsed' => FALSE,
+			'#weight' => 1
+		);
+		$defaults = _ggw_state_reporting_defaults($form['tid']['#value']);
+		$form['reporting-options']['display-setting'] = array(
+			'#type' => 'select',
+			'#title' => t('Enabled Reportings'),
+			'#options' => array('No Reporting', 'State Reporting', 'MSA Reporting', 'Report to both'),
+			'#description' => 'Shows you the different kinds of reportings available.',
+			'#default_value' => $defaults->setting
+		);
+
+		$form['reporting-options']['invoice-category'] = array(
+			'#type' => 'select',
+			'#title' => t('Invoice Category'),
+			'#options' => ggw_state_reporting_invoice_categories(1),
+			'#description' => 'Shows you the different kinds of reportings available.',
+			'#default_value' => $defaults->invoice_category
+		);
+		
+		$form['reporting-options']['packaging'] = array(
+			'#type' => 'textfield',
+			'#title' => t('Packaging'),
+			'#description' => 'eg: BOX, CARTON, ETC.',
+			'#default_value' => $defaults->packaging
+		);
+
+		$form['reporting-options']['retail_markup'] = array(
+			'#type' => 'textfield',
+			'#title' => t('Retail Markup Percentage'),
+			'#description' => '% Retail Markup',
+			'#default_value' => $defaults->retail_markup
+		);
+	}
+}
+
+function ggw_state_reporting_taxonomy($op, $type, $array = NULL) {
+	if($type == 'term' && $array['vid'] == 7) {
+		$tid = $array['tid'];
+		if(($op == 'insert' || $op == 'update') && isset($array['display-setting'])) {
+			db_query("DELETE FROM {ggw_state_reporting_terms} WHERE vid = %d", $tid);
+			db_query("INSERT INTO {ggw_state_reporting_terms} VALUES (%d, %d, %d, '%s', '%s')", $tid, $array['display-setting'], $array['packaging'], $array['invoice-category'], $array['retail_markup']);
+		} elseif($op == 'delete') {
+			db_query("DELETE FROM {ggw_state_reporting_terms} WHERE vid = %d", $tid);
+		}
+	}
+}
+
+function _ggw_state_reporting_defaults($tid) {
+	return db_fetch_object(db_query("SELECT * FROM {ggw_state_reporting_terms} WHERE vid = %d", $tid));
+}
+
+function ggw_state_reporting_calculate_tax($order) {
+  watchdog('Calculation Attempt');
+  $taxes = uc_taxes_rate_load();
+  $user = user_load($order->uid);
+
+  // Calculate taxes per product.
+  $order_taxes = array();
+  foreach ($order->products as $product) {
+   	$product_tax_settings = _ggw_state_reporting_product_taxes($product->nid);
+
+   	if($product_tax_settings->retail_tax == 'Y' && $user->tax_settings->retail_tax == 'Y') {
+   		$tax_id = RETAIL_TAX_ID;
+   	}
+
+   	if($product_tax_settings->wholesale_tax == 'Y' && $user->tax_settings->wholesale_tax == 'Y') {
+   		$tax_id = WHOLESALE_TAX_ID;
+   	}
+
+   	if($product_tax_settings->retail_tax == 'Y' && $order->uid == 0) {
+   		$tax_id = RETAIL_TAX_ID;
+   	}
+
+    if (empty($tax_id) || empty($taxes[$tax_id]) || empty($taxes[$tax_id]->rate)) {
+      continue;
+    }
+    $order_taxes[$tax_id]['taxable_amount'] += $product->price * $product->qty;
+    $order_taxes[$tax_id]['amount'] += $order_taxes[$tax_id]['taxable_amount'] * $taxes[$tax_id]->rate;
+
+    //Update cost on ticket
+    $cost = pos_stock_management_average_cost($product->nid);
+    db_query("UPDATE uc_order_products SET cost = '%s' WHERE order_product_id = '%d'", $cost, $product->order_product_id);
+  }
+
+  // Pack taxes in Ubercart hook_calculate_tax format as in uc_taxes_apply_tax().
+  if (!empty($order_taxes)) {
+    $order_taxes_line_items = array();
+    foreach ($order_taxes as $tax_id => $order_tax) {
+      $tax = $taxes[$tax_id];
+      $line_item = (object)array(
+        'id' => $tax->id,
+        'name' => $tax->name,
+        'amount' => $order_tax['amount'],
+        'weight' => $tax->weight,
+        'summed' => 1,
+      );
+      $line_item->data = array(
+        'tax_id' => $tax->id,
+        'tax_rate' => $tax->rate,
+        'taxable_amount' => $order_tax['taxable_amount'],
+        'tax_jurisdiction' => $tax->name,
+      );
+      $order_taxes_line_items[$tax_id] = $line_item;
+    }
+    return $order_taxes_line_items;
+  }
+}
+
+function _ggw_state_reporting_product_taxes($nid) {
+	return db_fetch_object(db_query("SELECT field_prod_retail_taxable_value AS retail_tax, field_prod_wholesale_taxable_value AS wholesale_tax FROM {content_type_product} WHERE nid = '%d'", $nid));
+}
+
+function ggw_state_reporting_register_options() {
+	$options = array("-- All Registers --");
+	$registers = db_query("SELECT register_id
+			  FROM  pos_api_expose_transaction_log
+			  GROUP BY register_id");
+
+	while($register = db_fetch_object($registers)) {
+		$options[$register->register_id] = $register->register_id;
+	}
+
+	return $options;
+}
+
+function ggw_state_reporting_date_range_form($form_state) {
+	drupal_add_css(drupal_get_path('module', 'ggw_state_reporting').'/css/sales_report_form.css');
+	//drupal_add_js(drupal_get_path('module', 'ggw_state_reporting').'/js/sales_report_form.js');
+	$form = array();
+	if($_GET['start_date']) {
+		$date = $_GET['start_date']['date'].' '.$_GET['start_date']['time'];
+	} else {
+		$date = date( "Y-m-d H:i", mktime(7, 0, 0));
+	}
+
+	if($_GET['end_date']) {
+		$end_date = $_GET['end_date']['date'].' '.$_GET['end_date']['time'];
+	} else {
+		$end_date = date( "Y-m-d H:i", mktime(22, 0, 0));
+	}
+
+	$format = 'Y-m-d H:i';
+
+	$form['start_date'] = array(
+		'#type' => 'date_popup', // types 'date_text' and 'date_timezone' are also supported. See .inc file.
+		'#title' => t('Start Date'),
+		'#default_value' => $date,
+		'#date_format' => $format,
+		'#date_label_position' => 'within', // See other available attributes and what they do in date_api_elements.inc
+		'#date_timezone' => 'America/Chicago', // Optional, if your date has a timezone other than the site timezone.
+		'#date_year_range' => '-3:+3', // Optional, used to set the year range (back 3 years and forward 3 years is the default).
+	);
+
+	$form['end_date'] = array(
+		'#type' => 'date_popup', // types 'date_text' and 'date_timezone' are also supported. See .inc file.
+		'#title' => t('End Date'),
+		'#default_value' => $end_date,
+		'#date_format' => $format,
+		'#date_label_position' => 'within', // See other available attributes and what they do in date_api_elements.inc
+		'#date_timezone' => 'America/Chicago', // Optional, if your date has a timezone other than the site timezone.
+		'#date_year_range' => '-3:+3', // Optional, used to set the year range (back 3 years and forward 3 years is the default).
+	);
+
+	$form['register_select'] = array(
+		'#type' => 'select',
+		'#title' => 'Register',
+		'#options' => ggw_state_reporting_register_options()
+	);
+
+	$form['controls_start'] = array(
+		'#type' => 'markup',
+		'#value' => '<div class="report-controls">'
+	);
+
+	$form['apply'] = array(
+		'#type' => 'submit',
+		'#value' => 'Apply'
+	);
+
+	$form['reset_button'] = array(
+        '#type' => 'markup',
+        '#value' => l('Reset To Today', 'admin/store/reports/pos-sales')
+    );
+
+    $form['controls_end'] = array(
+		'#type' => 'markup',
+		'#value' => '</div>'
+	);
+
+	$form['#method'] = 'get';
+
+	return $form;
+}
+
+function ggw_state_reporting_date_range_form_submit($form, $form_state) {
+	$values = $form_state['values'];
+	dpm($values);
+}

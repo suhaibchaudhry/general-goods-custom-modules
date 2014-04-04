@@ -1,0 +1,78 @@
+<?php
+function ggw_mobile_notify_menu() {
+	$items['admin/store/mobile/push-notifications'] = array(
+		'title' => 'Mobile Push Notifications',
+ 		'type' => MENU_NORMAL_ITEM,
+		'page callback' => '_ggw_mobile_notify',
+		'access arguments' => array('administer users')
+	);
+
+	return $items;
+}
+
+function _ggw_mobile_notify() {
+	return drupal_get_form('ggw_mobile_notify_form');
+}
+
+function ggw_mobile_notify_form($form_state) {
+	$form = array();
+
+	$form['message'] = array(
+		'#type' => 'textfield',
+		'#title' => t('Message'),
+		'#required' => true,
+		'#maxlength' => 256
+	);
+
+	$form['submit'] = array(
+		'#type' => 'submit',
+		'#value' => 'Broadcast Message'
+	);
+
+	return $form;
+}
+
+function ggw_mobile_notify_form_submit($form, $form_state) {
+	$key = '8C25410F859143F5A216703A0C67ABDDA5D87341D7384B4AB84FBE499186D132';
+	$message = $form_state['values']['message'];
+
+	$url = 'http://www.abouttrading.com/ggw/notification_push.php';
+
+	$fields_string = '';
+	$fields = array(
+        "key"  => $key,
+        "message" => $message
+	);
+
+	foreach($fields as $key=>$value) { $fields_string .= $key.'='.$value.'&'; }
+	rtrim($fields_string, '&');
+
+	//open connection
+	$ch = curl_init();
+
+	//set the url, number of POST vars, POST data
+	curl_setopt($ch,CURLOPT_URL, $url);
+	curl_setopt($ch,CURLOPT_POST, count($fields));
+	curl_setopt( $ch, CURLOPT_RETURNTRANSFER, true );
+	curl_setopt($ch,CURLOPT_POSTFIELDS, $fields_string);
+
+	//execute post
+	$result = curl_exec($ch);
+
+	//close connection
+	curl_close($ch);
+
+	$status = json_decode($result);
+
+	if($status->status) {
+		drupal_set_message($status->message);
+	} else {
+		drupal_set_message($status->message, 'error');
+	}
+
+}
+
+
+
+
+

@@ -1,0 +1,5 @@
+name = Pos Image Sync
+description = Synchronizes images from a folder.
+dependencies[] = elements
+package = General Goods POS
+core = 6.x

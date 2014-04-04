@@ -1,0 +1,5 @@
+name = GGW QR Codes
+description = Generate QR Codes for customers.
+package = GGW Custom Modules
+core = 6.x
+dependencies[] = libraries
