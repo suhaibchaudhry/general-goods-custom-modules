@@ -18,6 +18,8 @@ function _ggw_pos_report_daily() {
 		$end_date = mktime(22, 0, 0);
 	}
 
+	drupal_set_title('Daily Sales Report - ('.date('n/j/Y h:i a', $start_date).' - '.date('n/j/Y h:i a', $end_date).')');
+
 	$content = drupal_get_form('ggw_state_reporting_date_range_form');
 
 	$settlements = db_query("SELECT u.uid, u.credit_amount, s.settlement_amount, s.payment_type, s.remarks, s.settlement_date FROM user_term_credits_settlements s
@@ -160,14 +162,14 @@ function _ggw_pos_report_daily() {
 	);
 
 	$rows[] = array(
-		'- Returns',
+		'-&nbsp;&nbsp;Returns',
 		uc_currency_format($rma_returns),
-		'- Coupons',
+		'-&nbsp;&nbsp;Coupons',
 		uc_currency_format($coupons)
 	);
 
 	$rows[] = array(
-		'- Discount',
+		'-&nbsp;&nbsp;Discount',
 		uc_currency_format($discount),
 		'+ Sales Tax',
 		uc_currency_format($sales_tax)
@@ -181,7 +183,7 @@ function _ggw_pos_report_daily() {
 	);
 
 	$rows[] = array(
-		'- Product Cost',
+		'-&nbsp;&nbsp;Product Cost',
 		uc_currency_format($product_cost),
 		$spacing.'Total Customer Deposit',
 		uc_currency_format($total_settlements)
