@@ -114,7 +114,7 @@ function _ggw_pos_report_daily() {
 		$transacs_count++;
 	}
 
-	$content .= theme('table', $header, $rows);
+	$content .= theme('table', $header, $rows, array('class' => 'invoice-report'));
 
 	$header = array('Total Registers', '', '', '');
 	$rows = array();

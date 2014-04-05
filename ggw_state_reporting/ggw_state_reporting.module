@@ -288,7 +288,7 @@ function ggw_state_reporting_register_options() {
 
 function ggw_state_reporting_date_range_form($form_state) {
 	drupal_add_css(drupal_get_path('module', 'ggw_state_reporting').'/css/sales_report_form.css');
-	//drupal_add_js(drupal_get_path('module', 'ggw_state_reporting').'/js/sales_report_form.js');
+	drupal_add_js(drupal_get_path('module', 'ggw_state_reporting').'/js/sales_report_form.js');
 	$form = array();
 	if($_GET['start_date']) {
 		$date = $_GET['start_date']['date'].' '.$_GET['start_date']['time'];
