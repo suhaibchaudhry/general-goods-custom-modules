@@ -213,7 +213,6 @@ function _ggw_state_reporting_defaults($tid) {
 }
 
 function ggw_state_reporting_calculate_tax($order) {
-  watchdog('Calculation Attempt');
   $taxes = uc_taxes_rate_load();
   $user = user_load($order->uid);
 
@@ -224,7 +223,7 @@ function ggw_state_reporting_calculate_tax($order) {
 
    	if($product_tax_settings->retail_tax == 'Y' && $user->tax_settings->retail_tax == 'Y') {
    		$tax_id = RETAIL_TAX_ID;
-   	}
+   	} 
 
    	if($product_tax_settings->wholesale_tax == 'Y' && $user->tax_settings->wholesale_tax == 'Y') {
    		$tax_id = WHOLESALE_TAX_ID;
@@ -237,14 +236,22 @@ function ggw_state_reporting_calculate_tax($order) {
     if (empty($tax_id) || empty($taxes[$tax_id]) || empty($taxes[$tax_id]->rate)) {
       continue;
     }
-    $order_taxes[$tax_id]['taxable_amount'] += $product->price * $product->qty;
-    $order_taxes[$tax_id]['amount'] += $order_taxes[$tax_id]['taxable_amount'] * $taxes[$tax_id]->rate;
+
+    $total = $product->price * $product->qty;
+    $order_taxes[$tax_id]['taxable_amount'] += $total;
+    $order_taxes[$tax_id]['amount'] += $total * $taxes[$tax_id]->rate;
 
     //Update cost on ticket
     $cost = pos_stock_management_average_cost($product->nid);
     db_query("UPDATE uc_order_products SET cost = '%s' WHERE order_product_id = '%d'", $cost, $product->order_product_id);
   }
-
+  /*
+  ob_start();
+  var_dump($order_taxes);
+  var_dump($taxes);
+  $ob = ob_get_clean();
+  watchdog('emergency', $ob);
+  */
   // Pack taxes in Ubercart hook_calculate_tax format as in uc_taxes_apply_tax().
   if (!empty($order_taxes)) {
     $order_taxes_line_items = array();
