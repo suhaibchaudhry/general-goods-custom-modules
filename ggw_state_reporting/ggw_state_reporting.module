@@ -125,19 +125,53 @@ function ggw_state_reporting_download_state() {
 		print $content;
 }
 
-function ggw_state_reporting_download_msa() {
-	header("Content-type: text/csv");
-	header('Content-disposition: attachment;filename=msareport.csv');
+function ggw_state_reporting_msa_cell($data, $len) {
+	if(strlen($data) > $len) {
+		return substr($data, 0, $len);
+	} else {
+		return str_pad($data, $len);
+	}
+}
 
+function ggw_state_reporting_download_msa() {
+	header("Content-Type: text/plain");
+	header('Content-disposition: attachment;filename=weekly_msa_report.txt');
+
+	$company = 'GENERAL GOODS WHOLESALE';
+	$address = '8000 HARWIN, SUITE 200 HOUSTON, TX 77036';
+
+	$msa_number = '14047001';
+	$tobacco_id = '93044639';
+	$phone = '7137803636';
+	$fax = '7137801718';
+
+	$start_date = strtotime('-1 week');
+	$end_date = strtotime('now');
+
+	$start_date_r = date('Ymd', $start_date);
+	$end_date_r = date('Ymd', $end_date);
+
+	$report = '';
+
+	//MSA Report Header
+	$report .= ggw_state_reporting_msa_cell('HID'.$msa_number.'TOB', 16);
+	$report .= ggw_state_reporting_msa_cell('W'.$start_date_r.$company, 41);
+	$report .= ggw_state_reporting_msa_cell($address, 90);
+	$report .= ggw_state_reporting_msa_cell('TOBACO ID: '.$tobacco_id, 84);
+	$report .= ggw_state_reporting_msa_cell($phone, 15);
+	$report .= ggw_state_reporting_msa_cell($fax, 70);
+	$report .= '000100000002'.$end_date_r.'1'."\n\n";
+
+	/*
 	$report_entries = db_query("SELECT title, ucp.model, td.name, srt.packaging, SUM(qty) AS tQty, SUM(price) as tPrice FROM uc_order_products uop INNER JOIN term_node tn ON uop.nid = tn.nid INNER JOIN term_data td ON tn.tid = td.tid INNER JOIN ggw_state_reporting_terms srt ON tn.tid = srt.vid INNER JOIN uc_products ucp ON uop.nid = ucp.nid WHERE srt.setting IN ('2', '3') GROUP BY uop.nid");
 
 	$content = "HID14047001TOB  W20121221GENERAL GOODS WHOLESALE         8000 HARWIN, SUITE 200 HOUSTON, TX 77036                                                  TOBACO ID: 93044639                                                                 7137803636     7137801718                                                            000100000002201212261\n";
 	while($report_entry = db_fetch_object($report_entries)) {
 		$content .= 'BID	'.$report_entry->model.$report_entry->title.'                                                                               000024N75    003261                                                                                                 003 0000162.00'."\n";
 	
-	}
+	}*/
 	//return $content;
-	print $content;
+	print $report;
 }
 
 function ggw_state_reporting_invoice_categories($vid) {
