@@ -50,7 +50,7 @@ function _ggw_pos_report_daily() {
 
 	$content .= theme('table', $header, $rows);
 
-	$transacs = db_query("SELECT tl.credit_usage_id, tl.cash_pid, tl.rma_pid, tl.cc_pid, tl.check_pid, tl.mo_pid, tl.amount, tl.pid, tl.cuid, tl.uid, tl.timestamp, tl.register_id, tl.ticket_id, cl.amount_paid AS cash_paid, cl.change AS change_made, cl.total AS cash_total, chl.paid_amount AS check_payment, chl.post_dated AS check_post_dated, chl.cash_date AS check_cash_date, ccl.amount_paid AS cc_amount, mo.paid_amount AS mo_paid_amount, mo.reference AS mo_ref FROM {pos_api_expose_transaction_log} tl
+	$transacs = db_query("SELECT tl.credit_usage_id, tl.cash_pid, tl.rma_pid, tl.cc_pid, tl.check_pid, tl.mo_pid, tl.amount, tl.pid, tl.cuid, tl.uid, tl.timestamp, tl.register_id, tl.ticket_id, cl.amount_paid AS cash_paid, cl.change AS change_made, cl.total AS cash_total, chl.paid_amount AS check_payment, chl.post_dated AS check_post_dated, chl.cash_date AS check_cash_date, ccl.amount_paid AS cc_amount, mo.paid_amount AS mo_paid_amount, mo.reference AS mo_ref, ccl.transaction_id FROM {pos_api_expose_transaction_log} tl
 	LEFT JOIN {pos_api_expose_cash_log} cl ON tl.cash_pid = cl.pid
 	LEFT JOIN {pos_api_expose_credit_card_log} ccl ON tl.cc_pid = ccl.pid
 	LEFT JOIN {pos_api_expose_check_log} chl ON tl.check_pid = chl.pid
@@ -72,7 +72,11 @@ function _ggw_pos_report_daily() {
 		}
 
 		if($transac->cc_pid) {
-			$payby .= 'Credit Card - '.$transac->transaction_id.'<br />';
+			$payby .= 'Credit Card';
+			if($transac->transaction_id) {
+				$payby .= ' - '.$transac->transaction_id;
+			}
+			$payby .= '<br />';
 			$payment .= uc_currency_format($transac->cc_amount).'<br />';
 		}
 
