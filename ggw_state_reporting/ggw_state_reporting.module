@@ -133,9 +133,28 @@ function ggw_state_reporting_msa_cell($data, $len) {
 	}
 }
 
+function ggw_state_reporting_msa_get_inventory_report() {
+	$sql = "SELECT n.title, up.model FROM uc_products up
+			INNER JOIN term_node tn ON up.nid = tn.nid
+ 			INNER JOIN node n ON up.nid = n.nid
+			INNER JOIN ggw_state_reporting_terms sr ON sr.vid = tn.tid
+			WHERE setting > 1";
+
+	$content = '';
+	$bid = ggw_state_reporting_msa_cell('BID', 5);
+	$products = db_query($sql);
+
+	while($product = db_fetch_object($products)) {
+		$content .= $bid.ggw_state_reporting_msa_cell($product->model, 26);
+		$content .= "\n";
+	}
+
+	return $content;
+}
+
 function ggw_state_reporting_download_msa() {
 	header("Content-Type: text/plain");
-	header('Content-disposition: attachment;filename=weekly_msa_report.txt');
+	//header('Content-disposition: attachment;filename=weekly_msa_report.txt');
 
 	$company = 'GENERAL GOODS WHOLESALE';
 	$address = '8000 HARWIN, SUITE 200 HOUSTON, TX 77036';
@@ -161,6 +180,8 @@ function ggw_state_reporting_download_msa() {
 	$report .= ggw_state_reporting_msa_cell($phone, 15);
 	$report .= ggw_state_reporting_msa_cell($fax, 70);
 	$report .= '000100000002'.$end_date_r.'1'."\n\n";
+
+	$report .= ggw_state_reporting_msa_get_inventory_report();
 
 	/*
 	$report_entries = db_query("SELECT title, ucp.model, td.name, srt.packaging, SUM(qty) AS tQty, SUM(price) as tPrice FROM uc_order_products uop INNER JOIN term_node tn ON uop.nid = tn.nid INNER JOIN term_data td ON tn.tid = td.tid INNER JOIN ggw_state_reporting_terms srt ON tn.tid = srt.vid INNER JOIN uc_products ucp ON uop.nid = ucp.nid WHERE srt.setting IN ('2', '3') GROUP BY uop.nid");
