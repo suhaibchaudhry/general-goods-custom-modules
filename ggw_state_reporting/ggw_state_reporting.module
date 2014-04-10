@@ -273,32 +273,34 @@ function ggw_state_reporting_calculate_tax($order) {
 
   // Calculate taxes per product.
   $order_taxes = array();
-  foreach ($order->products as $product) {
-   	$product_tax_settings = _ggw_state_reporting_product_taxes($product->nid);
+  if($order->products) {
+	  foreach ($order->products as $product) {
+	   	$product_tax_settings = _ggw_state_reporting_product_taxes($product->nid);
 
-   	if($product_tax_settings->retail_tax == 'Y' && $user->tax_settings->retail_tax == 'Y') {
-   		$tax_id = RETAIL_TAX_ID;
-   	} 
+	   	if($product_tax_settings->retail_tax == 'Y' && $user->tax_settings->retail_tax == 'Y') {
+	   		$tax_id = RETAIL_TAX_ID;
+	   	} 
 
-   	if($product_tax_settings->wholesale_tax == 'Y' && $user->tax_settings->wholesale_tax == 'Y') {
-   		$tax_id = WHOLESALE_TAX_ID;
-   	}
+	   	if($product_tax_settings->wholesale_tax == 'Y' && $user->tax_settings->wholesale_tax == 'Y') {
+	   		$tax_id = WHOLESALE_TAX_ID;
+	   	}
 
-   	if($product_tax_settings->retail_tax == 'Y' && $order->uid == 0) {
-   		$tax_id = RETAIL_TAX_ID;
-   	}
+	   	if($product_tax_settings->retail_tax == 'Y' && $order->uid == 0) {
+	   		$tax_id = RETAIL_TAX_ID;
+	   	}
 
-    if (empty($tax_id) || empty($taxes[$tax_id]) || empty($taxes[$tax_id]->rate)) {
-      continue;
-    }
+	    if (empty($tax_id) || empty($taxes[$tax_id]) || empty($taxes[$tax_id]->rate)) {
+	      continue;
+	    }
 
-    $total = $product->price * $product->qty;
-    $order_taxes[$tax_id]['taxable_amount'] += $total;
-    $order_taxes[$tax_id]['amount'] += $total * $taxes[$tax_id]->rate;
+	    $total = $product->price * $product->qty;
+	    $order_taxes[$tax_id]['taxable_amount'] += $total;
+	    $order_taxes[$tax_id]['amount'] += $total * $taxes[$tax_id]->rate;
 
-    //Update cost on ticket
-    $cost = pos_stock_management_average_cost($product->nid);
-    db_query("UPDATE uc_order_products SET cost = '%s' WHERE order_product_id = '%d'", $cost, $product->order_product_id);
+	    //Update cost on ticket
+	    $cost = pos_stock_management_average_cost($product->nid);
+	    db_query("UPDATE uc_order_products SET cost = '%s' WHERE order_product_id = '%d'", $cost, $product->order_product_id);
+	  }
   }
   /*
   ob_start();
