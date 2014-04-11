@@ -1,0 +1,13 @@
+name = Slickgrid
+description = A spreadsheet-style views plugin using slickgrid
+dependencies[] = views
+dependencies[] = beautytips
+dependencies[] = ajax_load
+package = "Views"
+core = 6.x
+; Information added by drupal.org packaging script on 2011-08-01
+version = "6.x-1.3"
+core = "6.x"
+project = "slickgrid"
+datestamp = "1312195620"
+
