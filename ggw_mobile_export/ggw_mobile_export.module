@@ -13,7 +13,7 @@ function ggw_mobile_export_menu() {
 function ggw_mobile_export_feed() {
 	header("Content-Type: text/plain");
 
-	$products = db_query("SELECT n.title, up.nid, up.model, up.list_price, up.cost, up.sell_price, ctp.field_prod_packing_value, f.filepath, ctp.field_prod_unit_barcode_value FROM {uc_products} up INNER JOIN {node} n ON up.nid = n.nid LEFT JOIN {content_field_image_cache} cfi ON n.vid = cfi.vid LEFT JOIN {content_type_product} ctp ON n.vid = ctp.vid LEFT JOIN {files} f ON cfi.field_image_cache_fid = f.fid WHERE n.status > 0");
+	$products = db_query("SELECT n.title, up.nid, up.model, up.list_price, up.cost, up.sell_price, ctp.field_prod_packing_value, f.filepath, ctp.field_prod_unit_barcode_value FROM {uc_products} up INNER JOIN {node} n ON up.nid = n.nid LEFT JOIN {content_field_image_cache} cfi ON n.vid = cfi.vid LEFT JOIN {content_type_product} ctp ON n.vid = ctp.vid LEFT JOIN {files} f ON cfi.field_image_cache_fid = f.fid WHERE n.status > 0 AND ctp.field_hide_from_website_value IS NULL");
 	$query = 'DROP TABLE IF EXISTS ggwdata;';
 	$query .= 'CREATE TABLE IF NOT EXISTS ggwdata (nid unique, title TEXT, model TEXT, list_price TEXT, cost TEXT, sell_price TEXT, packaging TEXT, image_url TEXT, unit_barcode TEXT);';
 	//$query .= 'DELETE FROM ggwdata WHERE 1;'."\n";
