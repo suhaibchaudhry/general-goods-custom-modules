@@ -7,3 +7,7 @@ function ggw_profile_edit_init() {
 		drupal_add_js(drupal_get_path('module', 'ggw_profile_edit').'/js/conditional_fieldsets.js');
 	}
 }
+
+function ggw_profile_edit_form_user_profile_form_alter(&$form, &$form_state) {
+	unset ($form['contact']);
+}
