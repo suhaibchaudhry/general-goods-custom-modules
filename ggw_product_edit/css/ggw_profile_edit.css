@@ -55,9 +55,6 @@ fieldset.product-field {
 fieldset.publishing-options {
 	margin: 15px 0;
 }
-#edit-cost-wrapper {
-	display: none;
-}
 input#edit-role-prices-12, input#edit-role-prices-13, input#edit-role-prices-14, input#edit-role-prices-15 {
 	width: 95%;
 }

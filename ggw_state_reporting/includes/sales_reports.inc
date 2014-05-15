@@ -208,7 +208,7 @@ function _ggw_pos_report_daily() {
 
 	$rows[] = array(
 		$spacing.'G/P Margin Ratio',
-		number_format($margin, 2).'%',
+		number_format($margin*100, 2).'%',
 		$spacing.'Total Transaction Count',
 		$transacs_count
 	);
