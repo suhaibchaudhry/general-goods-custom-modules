@@ -299,6 +299,10 @@ function ggw_state_reporting_calculate_tax($order) {
 
 	    //Update cost on ticket
 	    $cost = pos_stock_management_average_cost($product->nid);
+	    if(empty($cost)) {
+               //Use default automagic cost.
+               $cost = db_result(db_query("SELECT cost FROM {uc_products} WHERE nid = '%d'", $product->nid));
+            }
 	    db_query("UPDATE uc_order_products SET cost = '%s' WHERE order_product_id = '%d'", $cost, $product->order_product_id);
 	  }
   }
