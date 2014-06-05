@@ -275,7 +275,8 @@ function ggw_state_reporting_calculate_tax($order) {
   $order_taxes = array();
   if($order->products) {
 	  foreach ($order->products as $product) {
-	   	$product_tax_settings = _ggw_state_reporting_product_taxes($product->nid);
+	   	$tax_id = 0;
+		$product_tax_settings = _ggw_state_reporting_product_taxes($product->nid);
 
 	   	if($product_tax_settings->retail_tax == 'Y' && $user->tax_settings->retail_tax == 'Y') {
 	   		$tax_id = RETAIL_TAX_ID;
