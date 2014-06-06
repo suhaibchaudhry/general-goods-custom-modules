@@ -125,7 +125,7 @@ function _ggw_pos_report_daily() {
 	$header = array('Total Registers', '', '', '');
 	$rows = array();
 
-	$cash_sales = db_result(db_query("SELECT SUM(cl.total) FROM pos_api_expose_cash_log cl WHERE cl.timestamp >= '%s' AND cl.timestamp <= '%s'", $start_date, $end_date));
+	$cash_sales = db_result(db_query("SELECT SUM(cl.total) FROM pos_api_expose_cash_log cl INNER JOIN pos_api_expose_transaction_log tl ON tl.cash_pid = cl.pid WHERE tl.rma_pid = '0' AND tl.cc_pid = '0' AND tl.check_pid = '0' AND tl.mo_pid = '0' AND cl.timestamp >= '%s' AND cl.timestamp <= '%s'", $start_date, $end_date));
 	
 	$check_sales = db_result(db_query("SELECT SUM(paid_amount) FROM pos_api_expose_check_log cl WHERE cl.timestamp >= '%s' AND cl.timestamp <= '%s'", $start_date, $end_date));
 
