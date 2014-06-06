@@ -127,7 +127,7 @@ function _ggw_pos_report_daily() {
 
 	$cash_sales = db_result(db_query("SELECT SUM(cl.total) FROM pos_api_expose_cash_log cl INNER JOIN pos_api_expose_transaction_log tl ON tl.cash_pid = cl.pid WHERE tl.rma_pid = '0' AND tl.cc_pid = '0' AND tl.check_pid = '0' AND tl.mo_pid = '0' AND cl.timestamp >= '%s' AND cl.timestamp <= '%s'", $start_date, $end_date));
 	
-	$check_sales = db_result(db_query("SELECT SUM(paid_amount) FROM pos_api_expose_check_log cl WHERE cl.timestamp >= '%s' AND cl.timestamp <= '%s'", $start_date, $end_date));
+	$check_sales = db_result(db_query("SELECT SUM(paid_amount) FROM pos_api_expose_check_log cl WHERE post_dated = '0' AND cl.timestamp >= '%s' AND cl.timestamp <= '%s'", $start_date, $end_date));
 
 	$check_sales_post = db_result(db_query("SELECT SUM(paid_amount) FROM pos_api_expose_check_log cl WHERE post_dated = '1' AND cl.timestamp >= '%s' AND cl.timestamp <= '%s'", $start_date, $end_date));
 	
@@ -135,7 +135,7 @@ function _ggw_pos_report_daily() {
 	$mo_sales = db_result(db_query("SELECT SUM(paid_amount) FROM pos_api_expose_money_order_log mo WHERE mo.timestamp >= '%s' AND mo.timestamp <= '%s'", $start_date, $end_date));
 	$ar_sales = db_result(db_query("SELECT SUM(amount) FROM pos_api_expose_transaction_log tl WHERE credit_usage_id > 0 AND tl.timestamp >= '%s' AND tl.timestamp <= '%s'", $start_date, $end_date));
 
-	$total_sales = $cash_sales+$check_sales+$cc_sales+$mo_sales+$ar_sales;
+	$total_sales = $cash_sales+$check_sales+$cc_sales+$mo_sales+$ar_sales+$check_sales_post;
 
 	$rma_returns = db_result(db_query("SELECT SUM(total_refund) FROM pos_api_expose_rma_refund_log rl WHERE rl.timestamp >= '%s' AND rl.timestamp <= '%s'", $start_date, $end_date));
 
