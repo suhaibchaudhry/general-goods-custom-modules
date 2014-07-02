@@ -125,11 +125,11 @@ function ggw_state_reporting_download_state() {
 		print $content;
 }
 
-function ggw_state_reporting_msa_cell($data, $len) {
+function ggw_state_reporting_msa_cell($data, $len, $pad_type = STR_PAD_RIGHT, $pad_string = " ") {
 	if(strlen($data) > $len) {
 		return substr($data, 0, $len);
 	} else {
-		return str_pad($data, $len);
+		return str_pad($data, $len, $pad_string, $pad_type);
 	}
 }
 
