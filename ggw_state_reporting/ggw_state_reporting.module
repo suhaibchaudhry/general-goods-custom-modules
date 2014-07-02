@@ -42,7 +42,22 @@ function ggw_state_reporting_menu() {
    	'file' => 'includes/sales_reports.inc'
    );
 
+   $items['user/%user/edi-invoice/%uc_order'] = array(
+    'title callback' => 'uc_order_page_title',
+    'title arguments' => array(3),
+    'description' => 'Download EDI.',
+    'page callback' => 'ggw_state_reporting_download_edi',
+    'page arguments' => array(3),
+    'access callback' => 'uc_order_can_view_order',
+    'access arguments' => array(1, 3),
+    'type' => MENU_CALLBACK
+  );
+
   return $items;
+}
+
+function ggw_state_reporting_download_edi($order) {
+	dpm($order);
 }
 
 function ggw_state_reporting_admin() {
