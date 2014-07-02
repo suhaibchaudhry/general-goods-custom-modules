@@ -42,10 +42,9 @@ function ggw_state_reporting_menu() {
    	'file' => 'includes/sales_reports.inc'
    );
 
-   $items['user/%user/edi-invoice/%uc_order'] = array(
-    'title callback' => 'uc_order_page_title',
-    'title arguments' => array(3),
-    'description' => 'Download EDI.',
+   $items['user/%user/order/%uc_order/edi-invoice'] = array(
+    'title' => 'EDI Invoice',
+    'description' => 'Download EDI Invoice.',
     'page callback' => 'ggw_state_reporting_download_edi',
     'page arguments' => array(3),
     'access callback' => 'uc_order_can_view_order',
@@ -57,7 +56,8 @@ function ggw_state_reporting_menu() {
 }
 
 function ggw_state_reporting_download_edi($order) {
-	dpm($order);
+	//dpm($order);
+	return 'Download EDI Invoice';
 }
 
 function ggw_state_reporting_admin() {
