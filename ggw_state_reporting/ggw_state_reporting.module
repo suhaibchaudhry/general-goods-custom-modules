@@ -56,8 +56,62 @@ function ggw_state_reporting_menu() {
 }
 
 function ggw_state_reporting_download_edi($order) {
+	$edi_buffer = 'GGWHTX    7137803636'."\n";
 	//dpm($order);
-	return 'Download EDI Invoice';
+	foreach($order->products as $product) {
+		$data = db_fetch_object(db_query("SELECT field_prod_unit_barcode_value, field_prod_form_value, field_prod_pcs_per_unit_value FROM {content_type_product} WHERE nid = '%d'", $product->nid));
+
+		//Senitel
+		$edi_buffer .= 'B';
+		//UPC
+		if($data->field_prod_unit_barcode_value) {
+			$upc = $data->field_prod_unit_barcode_value;
+		} else {
+			$upc = $product->model;
+		}
+		$edi_buffer .= ggw_state_reporting_msa_cell($upc, 11, STR_PAD_LEFT);
+		//Description
+		$edi_buffer .= ggw_state_reporting_msa_cell($product->title, 25);
+		//Carton Barcode
+		$edi_buffer .= ggw_state_reporting_msa_cell($product->model, 6, STR_PAD_LEFT, '0');
+		//Case Cost
+		$price = (int)($product->price*100);
+		$edi_buffer .= ggw_state_reporting_msa_cell($price, 6, STR_PAD_LEFT, '0');
+		//Spaces
+		$edi_buffer .= '  ';
+		//Package Size
+		$edi_buffer .= ggw_state_reporting_msa_cell($data->field_prod_form_value, 6, STR_PAD_LEFT, '0');
+		//Qty
+		$edi_buffer .= ggw_state_reporting_msa_cell($product->qty, 5, STR_PAD_LEFT, '0');
+		//Unit Retail
+		$retail_markup = ggw_state_reporting_retail_markup_factor($product->nid);
+		$retail = (int)($product->price*$retail_markup*100);
+		$edi_buffer .= ggw_state_reporting_msa_cell($retail, 5, STR_PAD_LEFT, '0');
+		//QuantityinPack
+		$edi_buffer .= ggw_state_reporting_msa_cell($data->field_prod_pcs_per_unit_value, 3, STR_PAD_LEFT, '0');
+		//Newline
+		$edi_buffer .= "\n";
+	}
+	drupal_set_header("Content-Disposition: attachment; filename=\"ggw-edi-invoice\"");
+	drupal_set_header("Content-Type: text/plain");
+	drupal_set_header("Content-Length: " . strlen($edi_buffer));
+
+	print $edi_buffer;
+}
+
+function ggw_state_reporting_retail_markup_factor($nid) {
+	$retail_markup = 0;
+	$node = node_load($nid);
+    foreach($node->taxonomy as $term) {
+      if($term->vid == 7) {
+        $term_info = db_fetch_object(db_query("SELECT invoice_category, retail_markup FROM {ggw_state_reporting_terms} WHERE vid = '%d'", $term->tid));
+        $category = $term_info->invoice_category;
+        $retail_markup = 1+($term_info->retail_markup/100);
+        break;
+      }
+    }
+
+    return $retail_markup;
 }
 
 function ggw_state_reporting_admin() {
