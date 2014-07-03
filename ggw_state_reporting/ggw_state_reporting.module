@@ -55,6 +55,25 @@ function ggw_state_reporting_menu() {
   return $items;
 }
 
+function ggw_state_reporting_order_pane() {
+  $panes[] = array(
+    'id' => 'edi-download',
+    'callback' => 'ggw_state_reporting_order_pane_edi',
+    'title' => t('EDI Invoice'),
+    'desc' => t('Download EDI Invoice.'),
+    'class' => 'pos-left',
+    'weight' => 4,
+    'show' => array('customer'),
+  );
+  return $panes;
+}
+
+function ggw_state_reporting_order_pane_edi($op, $order) {
+  if($op == 'customer') {
+	return l('Download EDI Invoice', 'user/'.$order->uid.'/order/'.$order->order_id.'/edi-invoice');
+  }
+}
+
 function ggw_state_reporting_download_edi($order) {
 	$edi_buffer = 'GGWHTX    7137803636'."\n";
 	//dpm($order);
