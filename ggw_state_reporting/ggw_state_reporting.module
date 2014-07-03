@@ -92,7 +92,7 @@ function ggw_state_reporting_download_edi($order) {
 		//Newline
 		$edi_buffer .= "\n";
 	}
-	drupal_set_header("Content-Disposition: attachment; filename=\"ggw-edi-invoice\"");
+	drupal_set_header("Content-Disposition: attachment; filename=\"ggw-edi-invoice-".$order->order_id."\"");
 	drupal_set_header("Content-Type: text/plain");
 	drupal_set_header("Content-Length: " . strlen($edi_buffer));
 
