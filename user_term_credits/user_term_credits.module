@@ -318,6 +318,7 @@ function utc_credit_report($order_user) {
 	$content = '<div class="user-term-credits-report">';
 	$content .= '<p><span>Allocated Credit: </span>'.$order_user->credit_limits->credit_limit_view.'</p>';
 	$content .= '<p><span>Available Credit: </span>'.$order_user->credit_limits->available_credit_view.'</p>';
+	$content .= '<p><span>Amount Due: </span>'.$order_user->credit_limits->pending_payments_view.'</p>';
 	$content .= '<p><span>Credit Term Limit: </span>'.$order_user->credit_limits->term_limit.' Days</p>';
 	$content .= utc_generate_credits_table($order_user->uid);
 	$content .= '</div>';
