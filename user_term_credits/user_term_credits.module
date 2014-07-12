@@ -325,7 +325,18 @@ function utc_credit_report($order_user) {
 	return $content;
 }
 
-function utc_generate_credits_table($uid = 0) {
+function utc_credit_report_pos($order_user) {
+	$response = array();
+	$response['credit_limit'] = $order_user->credit_limits->credit_limit;
+	$response['available_credit'] = $order_user->credit_limits->available_credit;
+	$response['pending_payments'] = $order_user->credit_limits->pending_payments;
+	$response['term_limit'] = $order_user->credit_limits->term_limit;
+	$response['usages'] = utc_generate_credits_table($order_user->uid, false);
+
+	return $response;
+}
+
+function utc_generate_credits_table($uid = 0, $settlement_links = true) {
 	drupal_add_css(drupal_get_path('module', 'user_term_credits').'/css/user_term_credits_table.css');
 	$query = "SELECT * FROM {user_term_credits_usages} utcu WHERE utcu.credit_amount > 0";
 	if($uid) {
@@ -335,8 +346,12 @@ function utc_generate_credits_table($uid = 0) {
 	$query .= ' ORDER BY utcu.settled ASC, utcu.due_date ASC';
 
 	$credit_usages = pager_query($query, 50, 0, NULL, $uid);
+	if($settlement_links) {
+		$header = array('Customer', 'Order #', 'Credit Used', 'Term Limit', 'Purchase Date', 'Due Date', 'Settlements');
+	} else {
+		$header = array('Customer', 'Order #', 'Credit Used', 'Term Limit', 'Purchase Date', 'Due Date');
+	}
 
-	$header = array('Customer', 'Order #', 'Credit Used', 'Term Limit', 'Purchase Date', 'Due Date', 'Settlements');
 	$rows = array();
 	$time = time();
 	while($credit_usage = db_fetch_object($credit_usages)) {
@@ -351,16 +366,26 @@ function utc_generate_credits_table($uid = 0) {
 				$class = 'settled-false';
 			}
 		}
-
-		$rows[] = array('data' => array(
-			l($user->name, 'user/'.$user->uid),
-			l($credit_usage->order_id, 'admin/store/orders/'.$credit_usage->order_id),
-			variable_get('uc_currency_sign', '$').number_format($credit_usage->credit_amount, 2),
-			$credit_usage->term_limit.' Days',
-			date('n/j/Y h:iA', $credit_usage->consumption_date),
-			date('n/j/Y h:iA', $credit_usage->due_date),
-			utc_generate_settlements_table($credit_usage->cuid, $uid)
-		), 'class' => $class);
+		if($settlement_links) {
+			$rows[] = array('data' => array(
+				l($user->name, 'user/'.$user->uid),
+				l($credit_usage->order_id, 'admin/store/orders/'.$credit_usage->order_id),
+				variable_get('uc_currency_sign', '$').number_format($credit_usage->credit_amount, 2),
+				$credit_usage->term_limit.' Days',
+				date('n/j/Y h:iA', $credit_usage->consumption_date),
+				date('n/j/Y h:iA', $credit_usage->due_date),
+				utc_generate_settlements_table($credit_usage->cuid, $uid)
+			), 'class' => $class);
+		} else {
+			$rows[] = array('data' => array(
+				l($user->name, 'user/'.$user->uid),
+				l($credit_usage->order_id, 'admin/store/orders/'.$credit_usage->order_id),
+				variable_get('uc_currency_sign', '$').number_format($credit_usage->credit_amount, 2),
+				$credit_usage->term_limit.' Days',
+				date('n/j/Y h:iA', $credit_usage->consumption_date),
+				date('n/j/Y h:iA', $credit_usage->due_date)
+			), 'class' => $class);
+		}
 	}
 
 	return theme('table', $header, $rows, array('class' => 'user-term-credits-table'));
