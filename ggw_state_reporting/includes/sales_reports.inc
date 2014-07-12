@@ -50,7 +50,7 @@ function _ggw_pos_report_daily() {
 
 	$content .= theme('table', $header, $rows);
 
-	$transacs = db_query("SELECT tl.credit_usage_id, tl.cash_pid, tl.rma_pid, tl.cc_pid, tl.check_pid, tl.mo_pid, tl.amount, tl.pid, tl.cuid, tl.uid, tl.timestamp, tl.register_id, tl.ticket_id, cl.amount_paid AS cash_paid, cl.change AS change_made, cl.total AS cash_total, chl.paid_amount AS check_payment, chl.post_dated AS check_post_dated, chl.cash_date AS check_cash_date, ccl.amount_paid AS cc_amount, mo.paid_amount AS mo_paid_amount, mo.reference AS mo_ref, ccl.transaction_id FROM {pos_api_expose_transaction_log} tl
+	$transacs = db_query("SELECT tl.credit_usage_id, tl.cash_pid, tl.rma_pid, tl.cc_pid, tl.check_pid, tl.mo_pid, tl.amount, tl.pid, tl.cuid, tl.uid, tl.timestamp, tl.register_id, tl.ticket_id, cl.amount_paid AS cash_paid, cl.change AS change_made, cl.total AS cash_total, chl.paid_amount AS check_payment, chl.check_number, chl.post_dated AS check_post_dated, chl.cash_date AS check_cash_date, ccl.amount_paid AS cc_amount, mo.paid_amount AS mo_paid_amount, mo.reference AS mo_ref, ccl.transaction_id FROM {pos_api_expose_transaction_log} tl
 	LEFT JOIN {pos_api_expose_cash_log} cl ON tl.cash_pid = cl.pid
 	LEFT JOIN {pos_api_expose_credit_card_log} ccl ON tl.cc_pid = ccl.pid
 	LEFT JOIN {pos_api_expose_check_log} chl ON tl.check_pid = chl.pid
@@ -65,10 +65,12 @@ function _ggw_pos_report_daily() {
 		$payby = '';
 		$payment = '';
 		if($transac->cash_pid) {
-			$payby .= 'CASH<br />';
-			$payby .= 'CHANGE<br />';
-			$payment .= uc_currency_format($transac->cash_paid).'<br />';
-			$payment .= uc_currency_format($transac->change_made).'<br />';
+			if($transac->cash_paid > 0 || $transac->change_made > 0) {
+				$payby .= 'CASH<br />';
+				$payby .= 'CHANGE<br />';
+				$payment .= uc_currency_format($transac->cash_paid).'<br />';
+				$payment .= uc_currency_format($transac->change_made).'<br />';
+			}
 		}
 
 		if($transac->cc_pid) {
@@ -82,12 +84,21 @@ function _ggw_pos_report_daily() {
 
 		if($transac->check_pid) {
 			if($transac->check_post_dated) {
-				$payby .= 'POST DATED CHECK'.'<br />';
+				$payby .= 'POST DATED CHECK';
+				if($transac->check_number) {
+					$payby .= ' - '.$transac->check_number;
+				}
+
 				$payment .= uc_currency_format($transac->check_payment);
 				$payment .= ' - '.$transac->check_cash_date.'<br />';
 			} else {
-				$payby .= 'CHECK'.'<br />';
-				$payment .= uc_currency_format($transac->check_payment).'<br />';
+				$payby .= 'CHECK';
+				if($transac->check_number) {
+					$payby .= ' - '.$transac->check_number;
+				}
+
+				$payment .= uc_currency_format($transac->check_payment);
+				$payment .= '<br />';
 			}
 		}
 
