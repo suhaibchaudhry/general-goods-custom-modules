@@ -88,7 +88,7 @@ function _ggw_pos_report_daily() {
 				if($transac->check_number) {
 					$payby .= ' - '.$transac->check_number;
 				}
-
+				$payby .= '<br />';
 				$payment .= uc_currency_format($transac->check_payment);
 				$payment .= ' - '.$transac->check_cash_date.'<br />';
 			} else {
