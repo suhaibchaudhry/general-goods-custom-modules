@@ -148,6 +148,20 @@ function user_term_credits_schema() {
 				'unsigned' => TRUE,
         		'default' => 0
       		),
+      		'euid' => array(
+				'type' => 'int',
+        		'not null' => TRUE,
+        		'default' => 0,
+				'unsigned' => TRUE,
+				'description' => "User ID of the employee."
+			),
+      		'register_id' => array(
+				'description' => t('Register id'),
+        		'type' => 'varchar',
+        		'length' => 255,
+        		'not null' => TRUE,
+        		'default' => ''
+			)
 		),
 		'indexes' => array(
 			'consumptions' => array('sid', 'cuid'),
@@ -164,4 +178,29 @@ function user_term_credits_install() {
 
 function user_term_credits_uninstall() {
 	drupal_uninstall_schema('user_term_credits');
+}
+
+function user_term_credits_update_6014() {
+	$ret = array();
+	$table = 'user_term_credits_settlements';
+	$field_name = 'euid';
+	$field = array(
+		'type' => 'int',
+		'not null' => TRUE,
+		'default' => 0,
+		'unsigned' => TRUE,
+		'description' => "User ID of the employee."
+	);
+
+	$field_name2 = 'register_id';
+	$field2 = array(
+		'description' => t('Register id'),
+		'type' => 'varchar',
+		'length' => 255,
+		'not null' => TRUE,
+		'default' => ''
+	);
+
+	db_add_field($ret, $table, $field_name, $field, array());
+	db_add_field($ret, $table, $field_name2, $field2, array());
 }
