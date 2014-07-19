@@ -36,8 +36,20 @@ function _ggw_pos_report_daily() {
 
 	$header = array('Date', 'Register', 'Customer', 'Payment', 'Payby', 'Amount');
 	$rows = array();
-
+	$settlement_close = array();
 	while($settlement = db_fetch_object($settlements)) {
+		$settlement_components = explode("\n", $settlement->remarks);
+
+		foreach($settlement_components as $settlement_component) {
+			$component = split('\|', $settlement_component);
+			if(!empty($component[0])) {
+				if(!array_key_exists($component[0], $settlement_close)) {
+					$settlement_close[$component[0]] = 0;
+				}
+				$settlement_close[$component[0]] += (int)(((double)$component[1])*100);
+			}
+		}
+
 		$rows[] = array(
 			date('n/j/Y', $settlement->settlement_date),
 			'',
@@ -229,26 +241,32 @@ function _ggw_pos_report_daily() {
 
 	$header = array('Payment', 'Total');
 	$rows = array();
+
+	$cash_sales += (($settlement_close['CASH']-$settlement_close['CHANGE'])/100);
 	$rows[] = array(
 		'Cash',
 		uc_currency_format($cash_sales)
 	);
 
+	$check_sales += $settlement_close['CHECK']/100;
 	$rows[] = array(
 		'Check',
 		uc_currency_format($check_sales)
 	);
 
+	$mo_sales += $settlement_close['MO']/100;
 	$rows[] = array(
 		'Money Order',
 		uc_currency_format($mo_sales)
 	);
 
+	$cc_sales += $settlement_close['CC']/100;
 	$rows[] = array(
 		'Credit Card',
 		uc_currency_format($cc_sales)
 	);
 
+	$check_sales_post += $settlement_close['PCHECK']/100;
 	$rows[] = array(
 		'Post Dated Check',
 		uc_currency_format($check_sales_post)
