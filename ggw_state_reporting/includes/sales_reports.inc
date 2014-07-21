@@ -22,7 +22,7 @@ function _ggw_pos_report_daily() {
 
 	$content = drupal_get_form('ggw_state_reporting_date_range_form');
 
-	$settlements = db_query("SELECT u.uid, u.credit_amount, s.settlement_amount, s.payment_type, s.remarks, s.settlement_date FROM user_term_credits_settlements s
+	$settlements = db_query("SELECT u.uid, u.credit_amount, s.settlement_amount, s.payment_type, s.remarks, s.settlement_date, s.euid, s.register_id FROM user_term_credits_settlements s
 							INNER JOIN user_term_credits_usages u ON s.cuid = u.cuid
 							WHERE s.settlement_date >= '%s' AND s.settlement_date <= '%s'", $start_date, $end_date);
 
@@ -34,29 +34,62 @@ function _ggw_pos_report_daily() {
 							FROM user_term_credits_settlements s
 							WHERE s.settlement_date >= '%s' AND s.settlement_date <= '%s'", $start_date, $end_date));
 
-	$header = array('Date', 'Register', 'Customer', 'Payment', 'Payby', 'Amount');
+	$header = array('Date', 'Register', 'Customer', 'Payment', 'Payby', 'Amount', 'Employee');
+	$payment_types = array(
+		'pos_payment' => 'Register Payment',
+		'cash' => 'Cash - B.O.',
+		'check' => 'Check - B.O.',
+		'money_order' => 'M.O. - B.O.',
+		'post_check' => 'Post Dated Check - B.O.'
+	);
 	$rows = array();
 	$settlement_close = array();
 	while($settlement = db_fetch_object($settlements)) {
-		$settlement_components = explode("\n", $settlement->remarks);
-
-		foreach($settlement_components as $settlement_component) {
-			$component = split('\|', $settlement_component);
-			if(!empty($component[0])) {
-				if(!array_key_exists($component[0], $settlement_close)) {
-					$settlement_close[$component[0]] = 0;
+		if($settlement->payment_type == 'pos_payment') {
+			$settlement_components = explode("\n", $settlement->remarks);
+			foreach($settlement_components as $settlement_component) {
+				$component = split('\|', $settlement_component);
+				if(!empty($component[0])) {
+					if(!array_key_exists($component[0], $settlement_close)) {
+						$settlement_close[$component[0]] = 0;
+					}
+					$settlement_close[$component[0]] += (int)(((double)$component[1])*100);
 				}
-				$settlement_close[$component[0]] += (int)(((double)$component[1])*100);
 			}
+		} else if($settlement->payment_type == 'cash') {
+			$component = 'CASH';
+			if(!array_key_exists($component, $settlement_close)) {
+				$settlement_close[$component] = 0;
+			}
+			$settlement_close[$component] += (int)(((double)$settlement->settlement_amount)*100);
+		} else if($settlement->payment_type == 'check') {
+			$component = 'CHECK';
+			if(!array_key_exists($component, $settlement_close)) {
+				$settlement_close[$component] = 0;
+			}
+			$settlement_close[$component] += (int)(((double)$settlement->settlement_amount)*100);
+		} else if($settlement->payment_type == 'money_order') {
+			$component = 'MO';
+			if(!array_key_exists($component, $settlement_close)) {
+				$settlement_close[$component] = 0;
+			}
+			$settlement_close[$component] += (int)(((double)$settlement->settlement_amount)*100);
+		} else if($settlement->payment_type == 'post_check') {
+			$component = 'PCHECK';
+			if(!array_key_exists($component, $settlement_close)) {
+				$settlement_close[$component] = 0;
+			}
+			$settlement_close[$component] += (int)(((double)$settlement->settlement_amount)*100);
 		}
 
 		$rows[] = array(
 			date('n/j/Y', $settlement->settlement_date),
-			'',
-			_ggw_state_reporting_cust_name($transac->uid),
+			$settlement->register_id,
+			_ggw_state_reporting_cust_name($settlement->uid),
 			uc_currency_format($settlement->settlement_amount),
-			$settlement->payment_type,
-			uc_currency_format($settlement->credit_amount)
+			$payment_types[$settlement->payment_type],
+			uc_currency_format($settlement->credit_amount),
+			_ggw_state_reporting_cust_name($settlement->euid)
 		);
 	}
 
@@ -106,7 +139,9 @@ function _ggw_pos_report_daily() {
 			} else {
 				$payby .= 'CHECK';
 				if($transac->check_number) {
-					$payby .= ' - '.$transac->check_number;
+					$payby .= ' - '.$transac->check_number.'<br />';
+				} else {
+					$payby .= '<br />';
 				}
 
 				$payment .= uc_currency_format($transac->check_payment);
@@ -115,7 +150,11 @@ function _ggw_pos_report_daily() {
 		}
 
 		if($transac->mo_pid) {
-			$payby .= 'Money Order - '.$transac->mo_ref.'<br />';
+			if($transac->mo_ref) {
+				$payby .= 'Money Order - '.$transac->mo_ref.'<br />';
+			} else {
+				$payby .= 'Money Order'.'<br />';
+			}
 			$payment .= uc_currency_format($transac->mo_paid_amount).'<br />';
 		}
 
@@ -125,7 +164,7 @@ function _ggw_pos_report_daily() {
 		}
 
 		if($transac->rma_pid) {
-			$payby .= 'AR'.'<br />';
+			$payby .= 'RMA CREDIT'.'<br />';
 			$payment .= uc_currency_format($transac->amount).'-<br />';
 		}
 
