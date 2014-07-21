@@ -517,3 +517,13 @@ function ggw_state_reporting_date_range_form_submit($form, $form_state) {
 	$values = $form_state['values'];
 	dpm($values);
 }
+
+function _ggw_state_reporting_cust_name($uid) {
+	$user = db_result(db_query("SELECT n.title FROM node n WHERE n.uid = '".$uid."' AND n.type = 'profile'"));
+	if($user) {
+		return l($user, 'user/'.$uid);
+	} else {
+		 $username = db_result(db_query("SELECT name FROM {users} WHERE uid = '%s'", $uid));
+		 return l($username, 'user/'.$uid);
+	}
+}

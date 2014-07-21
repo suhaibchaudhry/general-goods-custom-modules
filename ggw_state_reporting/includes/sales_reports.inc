@@ -1,3 +1,4 @@
+
 <?php
 function _ggw_pos_report_daily() {
 	if($_GET['register_select']) {
@@ -313,14 +314,4 @@ function _ggw_pos_report_daily() {
 
 	$content .= theme('table', $header, $rows);
 	return $content;
-}
-
-function _ggw_state_reporting_cust_name($uid) {
-	$user = db_result(db_query("SELECT n.title FROM node n WHERE n.uid = '".$uid."' AND n.type = 'profile'"));
-	if($user) {
-		return l($user, 'user/'.$uid);
-	} else {
-		 $username = db_result(db_query("SELECT name FROM {users} WHERE uid = '%s'", $uid));
-		 return l($username, 'user/'.$uid);
-	}
 }

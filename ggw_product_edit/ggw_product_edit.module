@@ -11,7 +11,42 @@ function ggw_product_edit_menu() {
   			// Page callback, etc. need to be added here.
 		);
 
+		$items['admin/inconsistent-tickets'] = array(
+			'title' => 'Inconsistent Tickets',
+  			'type' => MENU_CALLBACK,
+			'description' => 'Loads tickets that are inconsistent.',
+			'page callback' => 'ggw_inconsitent_tickets',
+			'access arguments' => array('view all orders')
+		);
+
 	return $items;
+}
+
+function ggw_inconsitent_tickets() {
+	$tickets = db_query("SELECT cu.cuid, cu.uid, cu.ticket_id, cu.amount, o.order_total, cl.amount_paid, cl.change, cl.total, o.created, o.modified
+		FROM pos_api_expose_transaction_log cu
+		INNER JOIN uc_orders o ON cu.ticket_id = o.order_id
+		LEFT JOIN pos_api_expose_cash_log cl ON cu.cash_pid = cl.pid
+		WHERE cu.amount <> o.order_total");
+
+	$header = array('Customer', 'Employee', 'Ticket #', 'Closed Amount', 'Current Invoice Amount', 'Cash Paid', 'Change Made', 'Ticket Closing Amount', 'Date Created', 'Date Modified');
+	$rows = array();
+	while($ticket = db_fetch_object($tickets)) {
+		$rows[] = array(
+			_ggw_state_reporting_cust_name($ticket->cuid),
+			_ggw_state_reporting_cust_name($ticket->uid),
+			l($ticket->ticket_id, 'admin/store/order/'.$ticket->ticket_id),
+			uc_currency_format($ticket->amount),
+			uc_currency_format($ticket->order_total),
+			uc_currency_format($ticket->amount_paid),
+			uc_currency_format($ticket->change),
+			uc_currency_format($ticket->total),
+			date('n/j/Y g:i A', $ticket->created),
+			date('n/j/Y g:i A', $ticket->modified)
+		);
+	}
+
+	return theme('table', $header, $rows);
 }
 
 function ggw_product_edit_form_alter(&$form, $form_state, $form_id) {
