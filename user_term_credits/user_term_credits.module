@@ -331,12 +331,12 @@ function utc_credit_report_pos($order_user) {
 	$response['available_credit'] = $order_user->credit_limits->available_credit;
 	$response['pending_payments'] = $order_user->credit_limits->pending_payments;
 	$response['term_limit'] = $order_user->credit_limits->term_limit;
-	$response['usages'] = utc_generate_credits_table($order_user->uid, false);
+	$response['usages'] = utc_generate_credits_table($order_user->uid, false, 10);
 
 	return $response;
 }
 
-function utc_generate_credits_table($uid = 0, $settlement_links = true) {
+function utc_generate_credits_table($uid = 0, $settlement_links = true, $limit = false) {
 	drupal_add_css(drupal_get_path('module', 'user_term_credits').'/css/user_term_credits_table.css');
 	$query = "SELECT * FROM {user_term_credits_usages} utcu WHERE utcu.credit_amount > 0";
 	if($uid) {
@@ -345,7 +345,13 @@ function utc_generate_credits_table($uid = 0, $settlement_links = true) {
 
 	$query .= ' ORDER BY utcu.settled ASC, utcu.due_date ASC';
 
-	$credit_usages = pager_query($query, 50, 0, NULL, $uid);
+	if($limit) {
+		$credit_usages = pager_query($query, $limit, 0, NULL, $uid);
+	} else {
+		$limit = 50;
+		$credit_usages = pager_query($query, 50, 0, NULL, $uid);
+	}
+
 	if($settlement_links) {
 		$header = array('Customer', 'Order #', 'Credit Used', 'Term Limit', 'Purchase Date', 'Due Date', 'Settlements');
 	} else {
@@ -388,7 +394,7 @@ function utc_generate_credits_table($uid = 0, $settlement_links = true) {
 		}
 	}
 
-	return theme('table', $header, $rows, array('class' => 'user-term-credits-table'));
+	return theme('table', $header, $rows, array('class' => 'user-term-credits-table')).theme('pager', NULL, $limit);
 }
 
 function utc_generate_settlements_table($cuid = 0, $uid) {
