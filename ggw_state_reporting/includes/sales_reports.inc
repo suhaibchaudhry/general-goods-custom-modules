@@ -23,9 +23,11 @@ function _ggw_pos_report_daily() {
 
 	$content = drupal_get_form('ggw_state_reporting_date_range_form');
 
-	$settlements = db_query("SELECT u.uid, u.credit_amount, s.settlement_amount, s.payment_type, s.remarks, s.settlement_date, s.euid, s.register_id FROM user_term_credits_settlements s
+	/*$settlements = db_query("SELECT u.uid, u.credit_amount, s.settlement_amount, s.payment_type, s.remarks, s.settlement_date, s.euid, s.register_id FROM user_term_credits_settlements s
 							INNER JOIN user_term_credits_usages u ON s.cuid = u.cuid
-							WHERE s.settlement_date >= '%s' AND s.settlement_date <= '%s'", $start_date, $end_date);
+							WHERE s.settlement_date >= '%s' AND s.settlement_date <= '%s'", $start_date, $end_date);*/
+
+	$settlements = db_query("SELECT u.uid, SUM(s.settlement_amount) AS settlement_amount, s.payment_type, s.remarks, s.settlement_date, s.euid, s.register_id FROM user_term_credits_settlements s LEFT JOIN user_term_credits_usages u ON s.cuid = u.cuid WHERE s.settlement_date >= '%s' AND s.settlement_date <= '%s' GROUP BY u.uid, s.settlement_date ORDER BY s.settlement_date ASC", $start_date, $end_date);
 
 	$total_settlements = db_result(db_query("SELECT SUM(s.settlement_amount)
 							FROM user_term_credits_settlements s
@@ -82,14 +84,30 @@ function _ggw_pos_report_daily() {
 			}
 			$settlement_close[$component] += (int)(((double)$settlement->settlement_amount)*100);
 		}
+		$column_1 = '';
+		$column_2 = '';
+		$pay_items = split("\n", $settlement->remarks);
+		$i = 0;
+		foreach($pay_items as $pay_item) {
+			$components = split("\|", $pay_item);
+			$column_1 .= $components[0];
+			$column_2 .= uc_currency_format($components[1], false);
+			if($i != count($pay_items)-1) {
+				$column_1 .= '<br />';
+				$column_2 .= '<br />';
+			}
+			$i++;
+		}
 
 		$rows[] = array(
 			date('n/j/Y', $settlement->settlement_date),
 			$settlement->register_id,
 			_ggw_state_reporting_cust_name($settlement->uid),
-			uc_currency_format($settlement->settlement_amount),
-			$payment_types[$settlement->payment_type],
-			uc_currency_format($settlement->credit_amount),
+			uc_currency_format($settlement->settlement_amount, false),
+			//$settlement->remarks,
+			//uc_currency_format($settlement->credit_amount),
+			$column_1,
+			$column_2,
 			_ggw_state_reporting_cust_name($settlement->euid)
 		);
 	}
@@ -114,8 +132,8 @@ function _ggw_pos_report_daily() {
 			if($transac->cash_paid > 0 || $transac->change_made > 0) {
 				$payby .= 'CASH<br />';
 				$payby .= 'CHANGE<br />';
-				$payment .= uc_currency_format($transac->cash_paid).'<br />';
-				$payment .= uc_currency_format($transac->change_made).'<br />';
+				$payment .= uc_currency_format($transac->cash_paid, false).'<br />';
+				$payment .= uc_currency_format($transac->change_made, false).'<br />';
 			}
 		}
 
@@ -125,7 +143,7 @@ function _ggw_pos_report_daily() {
 				$payby .= ' - '.$transac->transaction_id;
 			}
 			$payby .= '<br />';
-			$payment .= uc_currency_format($transac->cc_amount).'<br />';
+			$payment .= uc_currency_format($transac->cc_amount, false).'<br />';
 		}
 
 		if($transac->check_pid) {
@@ -135,7 +153,7 @@ function _ggw_pos_report_daily() {
 					$payby .= ' - '.$transac->check_number;
 				}
 				$payby .= '<br />';
-				$payment .= uc_currency_format($transac->check_payment);
+				$payment .= uc_currency_format($transac->check_payment, false);
 				$payment .= ' - '.$transac->check_cash_date.'<br />';
 			} else {
 				$payby .= 'CHECK';
@@ -145,7 +163,7 @@ function _ggw_pos_report_daily() {
 					$payby .= '<br />';
 				}
 
-				$payment .= uc_currency_format($transac->check_payment);
+				$payment .= uc_currency_format($transac->check_payment, false);
 				$payment .= '<br />';
 			}
 		}
@@ -156,7 +174,7 @@ function _ggw_pos_report_daily() {
 			} else {
 				$payby .= 'Money Order'.'<br />';
 			}
-			$payment .= uc_currency_format($transac->mo_paid_amount).'<br />';
+			$payment .= uc_currency_format($transac->mo_paid_amount, false).'<br />';
 		}
 
 		if($transac->credit_usage_id) {
@@ -166,7 +184,7 @@ function _ggw_pos_report_daily() {
 
 		if($transac->rma_pid) {
 			$payby .= 'RMA CREDIT'.'<br />';
-			$payment .= uc_currency_format($transac->amount).'-<br />';
+			$payment .= uc_currency_format($transac->amount, false).'-<br />';
 		}
 
 		$rows[] = array(
@@ -174,7 +192,7 @@ function _ggw_pos_report_daily() {
 			$transac->register_id,
 			$transac->pid,
 			_ggw_state_reporting_cust_name($transac->cuid),
-			uc_currency_format($transac->amount),
+			uc_currency_format($transac->amount, false),
 			$payby,
 			$payment,
 			_ggw_state_reporting_cust_name($transac->uid)
@@ -223,44 +241,44 @@ function _ggw_pos_report_daily() {
 	$spacing = '&nbsp;&nbsp;&nbsp;';
 	$rows[] = array(
 		$spacing.'Sales',
-		uc_currency_format($total_sales),
+		uc_currency_format($total_sales, false),
 		$spacing.'Net Sales',
-		uc_currency_format($net_sale)
+		uc_currency_format($net_sale, false)
 	);
 
 	$rows[] = array(
 		'-&nbsp;&nbsp;Returns',
-		uc_currency_format($rma_returns),
+		uc_currency_format($rma_returns, false),
 		'-&nbsp;&nbsp;Coupons',
-		uc_currency_format($coupons)
+		uc_currency_format($coupons, false)
 	);
 
 	$rows[] = array(
 		'-&nbsp;&nbsp;Discount',
-		uc_currency_format($discount),
+		uc_currency_format($discount, false),
 		'+ Sales Tax',
-		uc_currency_format($sales_tax)
+		uc_currency_format($sales_tax, false)
 	);
 
 	$rows[] = array(
 		$spacing.'Net Sales',
-		uc_currency_format($net_sale),
+		uc_currency_format($net_sale, false),
 		$spacing.'Total Invoice Amount',
-		uc_currency_format($total_invoice)
+		uc_currency_format($total_invoice, false)
 	);
 
 	$rows[] = array(
 		'-&nbsp;&nbsp;Product Cost',
-		uc_currency_format($product_cost),
+		uc_currency_format($product_cost, false),
 		$spacing.'Total Customer Deposit',
-		uc_currency_format($total_settlements)
+		uc_currency_format($total_settlements, false)
 	);
 
 	$rows[] = array(
 		$spacing.'Gross Profit',
-		uc_currency_format($net_sale-$product_cost),
+		uc_currency_format($net_sale-$product_cost, false),
 		$spacing.'Total Credit Sales',
-		uc_currency_format($ar_sales)
+		uc_currency_format($ar_sales, false)
 	);
 
 	if($net_sale == 0) {
@@ -285,31 +303,31 @@ function _ggw_pos_report_daily() {
 	$cash_sales += (($settlement_close['CASH']-$settlement_close['CHANGE'])/100);
 	$rows[] = array(
 		'Cash',
-		uc_currency_format($cash_sales)
+		uc_currency_format($cash_sales, false)
 	);
 
 	$check_sales += $settlement_close['CHECK']/100;
 	$rows[] = array(
 		'Check',
-		uc_currency_format($check_sales)
+		uc_currency_format($check_sales, false)
 	);
 
 	$mo_sales += $settlement_close['MO']/100;
 	$rows[] = array(
 		'Money Order',
-		uc_currency_format($mo_sales)
+		uc_currency_format($mo_sales, false)
 	);
 
 	$cc_sales += $settlement_close['CC']/100;
 	$rows[] = array(
 		'Credit Card',
-		uc_currency_format($cc_sales)
+		uc_currency_format($cc_sales, false)
 	);
 
 	$check_sales_post += $settlement_close['PCHECK']/100;
 	$rows[] = array(
 		'Post Dated Check',
-		uc_currency_format($check_sales_post)
+		uc_currency_format($check_sales_post, false)
 	);
 
 	$content .= theme('table', $header, $rows);
