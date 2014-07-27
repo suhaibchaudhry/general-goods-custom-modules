@@ -168,6 +168,175 @@ function user_term_credits_schema() {
 		),
 		'primary key' => array('sid')
 	);
+
+	$schema['user_term_credits_cash_log'] = array(
+		'description' => 'A log of cash payments.',
+		'fields' => array(
+			'pid' => array(
+				'type' => 'serial',
+				'not null' => TRUE,
+				'unsigned' => TRUE,
+				'description' => 'The payment event log id.'
+			),
+			'sid' => array(
+				'type' => 'int',
+        		'not null' => TRUE,
+        		'default' => 0,
+				'unsigned' => TRUE,
+				'description' => "Settlement ID"
+			),
+			'amount_paid' => array(
+				'type' => 'numeric',
+		        'precision' => 16,
+		        'scale' => 5,
+		        'not null' => TRUE,
+		        'default' => 0.0,
+			),
+			'change' => array(
+				'type' => 'numeric',
+		        'precision' => 16,
+		        'scale' => 5,
+		        'not null' => TRUE,
+		        'default' => 0.0,
+			),
+			'total' => array(
+				'type' => 'numeric',
+		        'precision' => 16,
+		        'scale' => 5,
+		        'not null' => TRUE,
+		        'default' => 0.0,
+			)
+		),
+		'primary key' => array('pid'),
+		'indexes' => array(
+    		'sid'        => array('sid')
+  		)
+	);
+
+	$schema['user_term_credits_credit_card_log'] = array(
+		'description' => 'A log of cash payments.',
+		'fields' => array(
+			'pid' => array(
+				'type' => 'serial',
+				'not null' => TRUE,
+				'unsigned' => TRUE,
+				'description' => 'The payment event log id.'
+			),
+			'sid' => array(
+				'type' => 'int',
+        		'not null' => TRUE,
+        		'default' => 0,
+				'unsigned' => TRUE,
+				'description' => "Settlement ID"
+			),
+			'amount_paid' => array(
+				'type' => 'numeric',
+		        'precision' => 16,
+		        'scale' => 5,
+		        'not null' => TRUE,
+		        'default' => 0.0,
+			),
+			'transaction_id' => array(
+				'description' => t('Credit card transaction id.'),
+        		'type' => 'varchar',
+        		'length' => 255,
+        		'not null' => TRUE,
+        		'default' => ''
+			)
+		),
+		'primary key' => array('pid'),
+		'indexes' => array(
+    		'sid'        => array('sid')
+  		)
+	);
+
+	$schema['user_term_credits_check_log'] = array(
+		'description' => 'A log of check payments.',
+		'fields' => array(
+			'pid' => array(
+				'type' => 'serial',
+				'not null' => TRUE,
+				'unsigned' => TRUE,
+				'description' => 'The payment event log id.'
+			),
+			'sid' => array(
+				'type' => 'int',
+        		'not null' => TRUE,
+        		'default' => 0,
+				'unsigned' => TRUE,
+				'description' => "Settlement id"
+			),
+			'paid_amount' => array(
+				'type' => 'numeric',
+		        'precision' => 16,
+		        'scale' => 5,
+		        'not null' => TRUE,
+		        'default' => 0.0,
+			),
+			'check_number' => array(
+				'description' => t('Check number.'),
+        		'type' => 'varchar',
+        		'length' => 255,
+        		'not null' => TRUE,
+        		'default' => ''
+			),
+			'post_dated' => array(
+				'description' => 'Whether check is postdated.',
+        		'type' => 'int',
+        		'not null' => TRUE,
+        		'default' => 0,
+				'size' => 'tiny'
+			),
+			'cash_date' => array(
+				'description' => t('Cash date of post dated check.'),
+        		'type' => 'varchar',
+        		'length' => 255,
+        		'not null' => TRUE,
+        		'default' => ''
+			)
+		),
+		'primary key' => array('pid'),
+		'indexes' => array(
+    		'sid'        => array('sid')
+  		)
+	);
+
+	$schema['user_term_credits_money_order_log'] = array(
+		'description' => 'A log of mo payments.',
+		'fields' => array(
+			'pid' => array(
+				'type' => 'serial',
+				'not null' => TRUE,
+				'unsigned' => TRUE,
+				'description' => 'The payment event log id.'
+			),
+			'sid' => array(
+				'type' => 'int',
+        		'not null' => TRUE,
+        		'default' => 0,
+				'unsigned' => TRUE,
+				'description' => "Settlement ID"
+			),
+			'paid_amount' => array(
+				'type' => 'numeric',
+		        'precision' => 16,
+		        'scale' => 5,
+		        'not null' => TRUE,
+		        'default' => 0.0,
+			),
+			'reference' => array(
+				'description' => t('Money order reference.'),
+        		'type' => 'varchar',
+        		'length' => 255,
+        		'not null' => TRUE,
+        		'default' => ''
+			)
+		),
+		'primary key' => array('pid'),
+		'indexes' => array(
+    		'sid'        => array('sid')
+  		)
+	);
 	
 	return $schema;
 }
@@ -203,4 +372,18 @@ function user_term_credits_update_6014() {
 
 	db_add_field($ret, $table, $field_name, $field, array());
 	db_add_field($ret, $table, $field_name2, $field2, array());
+}
+
+function user_term_credits_update_6015() {
+	//Add payment logs
+	$new_tables = array('user_term_credits_check_log',
+		'user_term_credits_credit_card_log',
+		'user_term_credits_cash_log',
+		'user_term_credits_money_order_log');
+
+	foreach($new_tables as $table_name) {
+		$res = array();
+		$table = drupal_get_schema_unprocessed('user_term_credits', $table_name);
+		db_create_table($res, $table_name, $table);
+	}
 }
