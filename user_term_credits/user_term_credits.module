@@ -478,29 +478,40 @@ function _user_term_credits_getCredits($uid) {
 	
 	if(empty($credits->credit_limit)) {
 		$credits->credit_limit = 0;
-	} else {
+	}/* else {
 		$credits->credit_limit = (float)$credits->credit_limit;
-	}
+	}*/
 	
 	if(empty($credits->term_limit)) {
 		$credits->term_limit = 10;
 	} else {
 		$credits->term_limit = (int)$credits->term_limit;
 	}
+
 	$sign = variable_get('uc_currency_sign', '$');
 	
 	$outstanding_payments = db_result(db_query("SELECT SUM(utcu.credit_amount) FROM {user_term_credits_usages} utcu WHERE utcu.uid = %d AND utcu.settled = 0", $uid));
 
 	$partial_payments = db_result(db_query("SELECT SUM(utcs.settlement_amount) FROM {user_term_credits_settlements} utcs INNER JOIN {user_term_credits_usages} utcu ON utcu.cuid = utcs.cuid WHERE utcu.uid = %d AND utcu.settled = 0", $uid));
 	
-	$credits->available_credit = (float)$credits->credit_limit - (float)$outstanding_payments + (float)$partial_payments;
-	$credits->pending_payments = (float)$outstanding_payments - (float)$partial_payments;
-	
+	//$credits->available_credit = (float)$credits->credit_limit - (float)$outstanding_payments + (float)$partial_payments;
+	//$credits->pending_payments = (float)$outstanding_payments - (float)$partial_payments;
+	$available_bc = bcsub($credits->credit_limit, $outstanding_payments, 6);
+	$available_bc = bcadd($available_bc, $partial_payments, 6);
+	$credits->available_credit = $available_bc;
+
+	$credits->pending_payments = user_term_credits_recursive_round(bcsub($outstanding_payments, $partial_payments, 6));
+
 	$credits->pending_payments_view = $sign.number_format($credits->pending_payments, 2);
 	$credits->available_credit_view = $sign.number_format($credits->available_credit, 2);
 	$credits->credit_limit_view = $sign.number_format($credits->credit_limit, 2);
 
 	return $credits;
+}
+
+function user_term_credits_recursive_round($number) {
+	//Round up up to a 3rd of a penny.
+	return round(round($number, 3), 2);
 }
 
 function user_term_credits_payment_method() {
