@@ -184,7 +184,8 @@ function _ggw_pos_report_daily() {
 
 		if($transac->rma_pid) {
 			$payby .= 'RMA CREDIT'.'<br />';
-			$payment .= uc_currency_format($transac->amount, false).'-<br />';
+			$rma = db_result(db_query("SELECT total_refund FROM pos_api_expose_rma_refund_log WHERE pid = '%d'", $transac->rma_pid));
+			$payment .= uc_currency_format((-1)*$rma, false).'<br />';
 		}
 
 		$rows[] = array(
