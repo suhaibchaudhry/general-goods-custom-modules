@@ -511,7 +511,7 @@ function _user_term_credits_getCredits($uid) {
 
 function user_term_credits_recursive_round($number) {
 	//Round up up to a 3rd of a penny.
-	return round(round($number, 3), 2);
+	return round(round($number, 3, PHP_ROUND_HALF_UP), 2, PHP_ROUND_HALF_DOWN);
 }
 
 function user_term_credits_payment_method() {
