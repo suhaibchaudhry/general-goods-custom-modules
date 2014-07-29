@@ -27,7 +27,7 @@ function _ggw_pos_report_daily() {
 							INNER JOIN user_term_credits_usages u ON s.cuid = u.cuid
 							WHERE s.settlement_date >= '%s' AND s.settlement_date <= '%s'", $start_date, $end_date);*/
 
-	$settlements = db_query("SELECT u.uid, SUM(s.settlement_amount) AS settlement_amount, s.payment_type, s.remarks, s.settlement_date, s.euid, s.register_id FROM user_term_credits_settlements s LEFT JOIN user_term_credits_usages u ON s.cuid = u.cuid WHERE s.settlement_date >= '%s' AND s.settlement_date <= '%s' GROUP BY u.uid, s.settlement_date ORDER BY s.settlement_date ASC", $start_date, $end_date);
+	$settlements = db_query("SELECT s.sid, u.uid, SUM(s.settlement_amount) AS settlement_amount, s.payment_type, s.remarks, s.settlement_date, s.euid, s.register_id FROM user_term_credits_settlements s LEFT JOIN user_term_credits_usages u ON s.cuid = u.cuid WHERE s.settlement_date >= '%s' AND s.settlement_date <= '%s' GROUP BY u.uid, s.settlement_date ORDER BY s.settlement_date ASC", $start_date, $end_date);
 
 	$total_settlements = db_result(db_query("SELECT SUM(s.settlement_amount)
 							FROM user_term_credits_settlements s
@@ -84,17 +84,64 @@ function _ggw_pos_report_daily() {
 			}
 			$settlement_close[$component] += (int)(((double)$settlement->settlement_amount)*100);
 		}
+
 		$column_1 = '';
 		$column_2 = '';
 		$pay_items = split("\n", $settlement->remarks);
+
+		$payment_types_cr = array(
+			'MO' => 'MONEY ORDER',
+			'CC' => 'CREDIT CARD',
+			'PCHECK' => 'POST DATED CHECK'
+		);
+
+		foreach($pay_items as $pay_item) {
+			$components = split("\|", $pay_item);
+			if($components[0] == 'CASH' || $components[0] == 'CHANGE') {
+				$column_1 .= $components[0];
+				$column_2 .= uc_currency_format(user_term_credits_recursive_round($components[1]), false);
+				$column_1 .= '<br />';
+				$column_2 .= '<br />';
+			}
+		}
+
 		$i = 0;
 		foreach($pay_items as $pay_item) {
 			$components = split("\|", $pay_item);
-			$column_1 .= $components[0];
-			$column_2 .= uc_currency_format($components[1], false);
-			if($i != count($pay_items)-1) {
-				$column_1 .= '<br />';
-				$column_2 .= '<br />';
+			if($components[0] != 'CASH' && $components[0] != 'CHANGE' && $components[1] > 0) {
+				if($payment_types_cr[$components[0]]) {
+					$column_1 .= $payment_types_cr[$components[0]];
+				} else {
+					$column_1 .= $components[0];
+				}
+				if($components[0] == 'CHECK' || $components[0] == 'PCHECK') {
+					$check_info = db_fetch_object(db_query("SELECT check_number, cash_date, post_dated FROM user_term_credits_check_log WHERE sid = '%d'", $settlement->sid));
+					if($check_info->check_number) {
+						$column_1 .= ' - '.$check_info->check_number;
+					}
+					if($check_info->post_dated) {
+						if($check_info->cash_date) {
+							$column_1 .= ' - '.$check_info->cash_date;
+						}
+					}
+				}
+				if($components[0] == 'CC') {
+					$transaction_id = db_result(db_query("SELECT transaction_id FROM user_term_credits_credit_card_log WHERE sid = '%d'", $settlement->sid));
+					if($transaction_id) {
+						$column_1 .= ' - '.$transaction_id;
+					}
+				}
+				if($components[0] == 'MO') {
+					$mo_payment = db_result(db_query("SELECT reference FROM user_term_credits_money_order_log WHERE sid = '%d'", $settlement->sid));
+					if($mo_payment) {
+						$column_1 .= ' - '.$mo_payment;
+					}
+				}
+				$column_2 .= uc_currency_format(user_term_credits_recursive_round($components[1]), false);
+				if($i != count($pay_items)-1) {
+					$column_1 .= '<br />';
+					$column_2 .= '<br />';
+				}
 			}
 			$i++;
 		}
@@ -103,7 +150,7 @@ function _ggw_pos_report_daily() {
 			date('n/j/Y', $settlement->settlement_date),
 			$settlement->register_id,
 			_ggw_state_reporting_cust_name($settlement->uid),
-			uc_currency_format($settlement->settlement_amount, false),
+			uc_currency_format(user_term_credits_recursive_round($settlement->settlement_amount), false),
 			//$settlement->remarks,
 			//uc_currency_format($settlement->credit_amount),
 			$column_1,
@@ -132,8 +179,8 @@ function _ggw_pos_report_daily() {
 			if($transac->cash_paid > 0 || $transac->change_made > 0) {
 				$payby .= 'CASH<br />';
 				$payby .= 'CHANGE<br />';
-				$payment .= uc_currency_format($transac->cash_paid, false).'<br />';
-				$payment .= uc_currency_format($transac->change_made, false).'<br />';
+				$payment .= uc_currency_format(user_term_credits_recursive_round($transac->cash_paid), false).'<br />';
+				$payment .= uc_currency_format(user_term_credits_recursive_round($transac->change_made), false).'<br />';
 			}
 		}
 
@@ -143,7 +190,7 @@ function _ggw_pos_report_daily() {
 				$payby .= ' - '.$transac->transaction_id;
 			}
 			$payby .= '<br />';
-			$payment .= uc_currency_format($transac->cc_amount, false).'<br />';
+			$payment .= uc_currency_format(user_term_credits_recursive_round($transac->cc_amount), false).'<br />';
 		}
 
 		if($transac->check_pid) {
@@ -153,7 +200,7 @@ function _ggw_pos_report_daily() {
 					$payby .= ' - '.$transac->check_number;
 				}
 				$payby .= '<br />';
-				$payment .= uc_currency_format($transac->check_payment, false);
+				$payment .= uc_currency_format(user_term_credits_recursive_round($transac->check_payment), false);
 				$payment .= ' - '.$transac->check_cash_date.'<br />';
 			} else {
 				$payby .= 'CHECK';
@@ -163,7 +210,7 @@ function _ggw_pos_report_daily() {
 					$payby .= '<br />';
 				}
 
-				$payment .= uc_currency_format($transac->check_payment, false);
+				$payment .= uc_currency_format(user_term_credits_recursive_round($transac->check_payment), false);
 				$payment .= '<br />';
 			}
 		}
@@ -174,7 +221,7 @@ function _ggw_pos_report_daily() {
 			} else {
 				$payby .= 'Money Order'.'<br />';
 			}
-			$payment .= uc_currency_format($transac->mo_paid_amount, false).'<br />';
+			$payment .= uc_currency_format(user_term_credits_recursive_round($transac->mo_paid_amount), false).'<br />';
 		}
 
 		if($transac->credit_usage_id) {
@@ -185,7 +232,7 @@ function _ggw_pos_report_daily() {
 		if($transac->rma_pid) {
 			$payby .= 'RMA CREDIT'.'<br />';
 			$rma = db_result(db_query("SELECT total_refund FROM pos_api_expose_rma_refund_log WHERE pid = '%d'", $transac->rma_pid));
-			$payment .= uc_currency_format((-1)*$rma, false).'<br />';
+			$payment .= uc_currency_format(user_term_credits_recursive_round((-1)*$rma), false).'<br />';
 		}
 
 		$rows[] = array(
@@ -193,7 +240,7 @@ function _ggw_pos_report_daily() {
 			$transac->register_id,
 			$transac->pid,
 			_ggw_state_reporting_cust_name($transac->cuid),
-			uc_currency_format($transac->amount, false),
+			uc_currency_format(user_term_credits_recursive_round($transac->amount), false),
 			$payby,
 			$payment,
 			_ggw_state_reporting_cust_name($transac->uid)
@@ -219,7 +266,7 @@ function _ggw_pos_report_daily() {
 
 	$total_sales = $cash_sales+$check_sales+$cc_sales+$mo_sales+$ar_sales+$check_sales_post;
 
-	$rma_returns = db_result(db_query("SELECT SUM(total_refund) FROM pos_api_expose_rma_refund_log rl WHERE rl.timestamp >= '%s' AND rl.timestamp <= '%s'", $start_date, $end_date));
+	$rma_returns = db_result(db_query("SELECT SUM(total_refund) FROM pos_api_expose_rma_refund_log rl WHERE rl.timestamp >= '%s' AND rl.timestamp <= '%s' AND total_refund > 0", $start_date, $end_date));
 
 	$product_cost = db_result(db_query("SELECT SUM(cost*qty) FROM uc_order_products uop
 	INNER JOIN uc_orders uo ON uop.order_id = uo.order_id
