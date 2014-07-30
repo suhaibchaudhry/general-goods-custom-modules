@@ -44,7 +44,7 @@ function ggw_views_alter_last_order($uid) {
 		return date('m/d/y', db_result(db_query($sql, $uid)));
 	}
 }
-
+/*
 function ggw_views_alters_cron() {
 	$hour = (int)date('G');
 	if($hour > 22 || hour < 4) {
@@ -58,3 +58,4 @@ function ggw_views_alters_cron() {
 		}
 	}
 }
+*/
