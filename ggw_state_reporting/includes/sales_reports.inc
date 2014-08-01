@@ -192,7 +192,7 @@ function _ggw_pos_report_daily() {
 
 	$header = array('Date', 'Register', 'Invoice', 'Customer', 'Total', 'Payby', 'Payment', 'Employee');
 	$rows = array();
-
+	$total_transacs = 0;
 	//Stats
 	while($transac = db_fetch_object($transacs)) {
 		$payby = '';
@@ -253,8 +253,15 @@ function _ggw_pos_report_daily() {
 
 		if($transac->rma_pid) {
 			$payby .= 'RMA CREDIT'.'<br />';
-			$rma = db_result(db_query("SELECT total_refund FROM pos_api_expose_rma_refund_log WHERE pid = '%d'", $transac->rma_pid));
-			$payment .= uc_currency_format(user_term_credits_recursive_round((-1)*$rma), false).'<br />';
+			$rma = db_result(db_query("SELECT (-1)*total_refund FROM pos_api_expose_rma_refund_log WHERE pid = '%d'", $transac->rma_pid));
+			$payment .= uc_currency_format(user_term_credits_recursive_round($rma), false).'<br />';
+			if($rma < 0) {
+				$transac->amount = (-1)*$transac->amount;
+			}
+		}
+
+		if($transac->amount > 0) {
+			$total_transacs += $transac->amount;
 		}
 
 		$rows[] = array(
@@ -277,7 +284,9 @@ function _ggw_pos_report_daily() {
 		$header = array('Total Registers', '', '', '');
 		$rows = array();
 
-		$cash_sales = db_result(db_query("SELECT SUM(cl.total) FROM pos_api_expose_cash_log cl INNER JOIN pos_api_expose_transaction_log tl ON tl.cash_pid = cl.pid WHERE tl.rma_pid = '0' AND tl.cc_pid = '0' AND tl.check_pid = '0' AND tl.mo_pid = '0' AND cl.timestamp >= '%s' AND cl.timestamp <= '%s'", $start_date, $end_date));
+		$cash_sales = db_result(db_query("SELECT SUM(cl.amount_paid) FROM pos_api_expose_cash_log cl INNER JOIN pos_api_expose_transaction_log tl ON tl.cash_pid = cl.pid WHERE cl.timestamp >= '%s' AND cl.timestamp <= '%s'", $start_date, $end_date));
+
+		$cash_change = db_result(db_query("SELECT SUM(cl.change) FROM pos_api_expose_cash_log cl INNER JOIN pos_api_expose_transaction_log tl ON tl.cash_pid = cl.pid WHERE cl.timestamp >= '%s' AND cl.timestamp <= '%s'", $start_date, $end_date));
 		
 		$check_sales = db_result(db_query("SELECT SUM(paid_amount) FROM pos_api_expose_check_log cl WHERE post_dated = '0' AND cl.timestamp >= '%s' AND cl.timestamp <= '%s'", $start_date, $end_date));
 
@@ -287,7 +296,9 @@ function _ggw_pos_report_daily() {
 		$mo_sales = db_result(db_query("SELECT SUM(paid_amount) FROM pos_api_expose_money_order_log mo WHERE mo.timestamp >= '%s' AND mo.timestamp <= '%s'", $start_date, $end_date));
 		$ar_sales = db_result(db_query("SELECT SUM(amount) FROM pos_api_expose_transaction_log tl WHERE credit_usage_id > 0 AND tl.timestamp >= '%s' AND tl.timestamp <= '%s'", $start_date, $end_date));
 
-		$total_sales = $cash_sales+$check_sales+$cc_sales+$mo_sales+$ar_sales+$check_sales_post;
+		$rma_sales = db_result(db_query("SELECT (-1)*SUM(total_refund) FROM pos_api_expose_rma_refund_log rl WHERE rl.timestamp >= '%s' AND rl.timestamp <= '%s' AND total_refund < 0", $start_date, $end_date));
+
+		$total_sales = $cash_sales-$cash_change+$check_sales+$cc_sales+$mo_sales+$ar_sales+$check_sales_post+$rma_sales;
 
 		$rma_returns = db_result(db_query("SELECT SUM(total_refund) FROM pos_api_expose_rma_refund_log rl WHERE rl.timestamp >= '%s' AND rl.timestamp <= '%s' AND total_refund > 0", $start_date, $end_date));
 
@@ -372,6 +383,7 @@ function _ggw_pos_report_daily() {
 		$rows = array();
 
 		$cash_sales += (($settlement_close['CASH']-$settlement_close['CHANGE'])/100);
+		$cash_sales -= $cash_change;
 		$rows[] = array(
 			'Cash',
 			uc_currency_format($cash_sales, false)
@@ -401,6 +413,11 @@ function _ggw_pos_report_daily() {
 			uc_currency_format($check_sales_post, false)
 		);
 
+		$rows[] = array(
+			'Invoice Total',
+			uc_currency_format($total_transacs, false)
+		);
+
 		$content .= theme('table', $header, $rows);
 	}
 
@@ -413,7 +430,7 @@ function pos_api_expose_clear_dp_form() {
 	$form['remove_dp'] = array(
 		'#type' => 'submit',
 		'#value' => 'Clear DP Tickets',
-		'#attributes' => array('style'=> 'margin: 10px 0;')
+		'#attributes' => array('style'=> 'margin: 10px 0;', 'onclick' => 'return confirm("Are you sure you want to continue with removal of dp tickets?")')
 	);
 
 	return $form;
