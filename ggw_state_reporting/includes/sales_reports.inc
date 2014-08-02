@@ -190,7 +190,7 @@ function _ggw_pos_report_daily() {
 	LEFT JOIN {".$mo_log_table."} mo ON tl.mo_pid = mo.pid
 	WHERE tl.timestamp >= '%s' AND tl.timestamp <= '%s'", $start_date, $end_date);
 
-	$header = array('Date', 'Register', 'Invoice', 'Customer', 'Total', 'Payby', 'Payment', 'Employee');
+	$header = array('Date', 'Register', 'Invoice', 'Customer', 'Total', 'Payby', 'Payment', 'Transaction Type', 'Ticket #', 'Employee');
 	$rows = array();
 	$total_transacs = 0;
 	//Stats
@@ -251,9 +251,17 @@ function _ggw_pos_report_daily() {
 			$payment .= '<br />';
 		}
 
+		$ticket_type = 'SALE';
 		if($transac->rma_pid) {
-			$payby .= 'RMA CREDIT'.'<br />';
 			$rma = db_result(db_query("SELECT (-1)*total_refund FROM pos_api_expose_rma_refund_log WHERE pid = '%d'", $transac->rma_pid));
+			if($rma > 0) {
+				$ticket_type = 'SALE w/ RMA';
+				$payby .= 'RMA DEBIT'.'<br />';
+			} else {
+				$ticket_type = 'RMA';
+				$payby .= 'RMA CREDIT'.'<br />';
+				$transac->ticket_id = db_result(db_query("SELECT rma_ticket_id FROM {pos_api_expose_rma_refund_log} WHERE pid = '%d'", $transac->rma_pid));
+			}
 			$payment .= uc_currency_format(user_term_credits_recursive_round($rma), false).'<br />';
 			if($rma < 0) {
 				$transac->amount = (-1)*$transac->amount;
@@ -272,6 +280,8 @@ function _ggw_pos_report_daily() {
 			uc_currency_format(user_term_credits_recursive_round($transac->amount), false),
 			$payby,
 			$payment,
+			$ticket_type,
+			l($transac->ticket_id, 'admin/store/orders/'.$transac->ticket_id, array('attributes' => array('target' => '_blank'))),
 			_ggw_state_reporting_cust_name($transac->uid)
 		);
 
