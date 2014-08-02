@@ -193,6 +193,7 @@ function _ggw_pos_report_daily() {
 	$header = array('Date', 'Register', 'Invoice', 'Customer', 'Total', 'Payby', 'Payment', 'Transaction Type', 'Ticket #', 'Employee');
 	$rows = array();
 	$total_transacs = 0;
+	$rma_cash_out = 0;
 	//Stats
 	while($transac = db_fetch_object($transacs)) {
 		$payby = '';
@@ -252,7 +253,12 @@ function _ggw_pos_report_daily() {
 		}
 
 		$ticket_type = 'SALE';
-		if($transac->rma_pid) {
+		if($transac->rma_pid < 0) {
+			$payby .= 'RMA CASH OUT'.'<br />';
+			$rma_cash_out += $transac->amount;
+			$transac->amount = (-1)*$transac->amount;
+			$payment .= uc_currency_format(user_term_credits_recursive_round($transac->amount), false);
+		} else if($transac->rma_pid > 0) {
 			$rma = db_result(db_query("SELECT (-1)*total_refund FROM pos_api_expose_rma_refund_log WHERE pid = '%d'", $transac->rma_pid));
 			if($rma > 0) {
 				$ticket_type = 'SALE w/ RMA';
@@ -310,7 +316,7 @@ function _ggw_pos_report_daily() {
 
 		$total_sales = $cash_sales-$cash_change+$check_sales+$cc_sales+$mo_sales+$ar_sales+$check_sales_post+$rma_sales;
 
-		$rma_returns = db_result(db_query("SELECT SUM(total_refund) FROM pos_api_expose_rma_refund_log rl WHERE rl.timestamp >= '%s' AND rl.timestamp <= '%s' AND total_refund > 0", $start_date, $end_date));
+		$rma_returns = db_result(db_query("SELECT SUM(total_refund) FROM pos_api_expose_rma_refund_log rl WHERE rl.timestamp >= '%s' AND rl.timestamp <= '%s' AND total_refund > 0", $start_date, $end_date))+$rma_cash_out;
 
 		$product_cost = db_result(db_query("SELECT SUM(cost*qty) FROM uc_order_products uop
 		INNER JOIN uc_orders uo ON uop.order_id = uo.order_id
@@ -394,6 +400,7 @@ function _ggw_pos_report_daily() {
 
 		$cash_sales += (($settlement_close['CASH']-$settlement_close['CHANGE'])/100);
 		$cash_sales -= $cash_change;
+		$cash_sales -= $rma_cash_out;
 		$rows[] = array(
 			'Cash',
 			uc_currency_format($cash_sales, false)
