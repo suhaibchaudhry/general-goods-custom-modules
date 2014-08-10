@@ -35,7 +35,7 @@ function ggw_inconsitent_tickets() {
 		$rows[] = array(
 			_ggw_state_reporting_cust_name($ticket->cuid),
 			_ggw_state_reporting_cust_name($ticket->uid),
-			l($ticket->ticket_id, 'admin/store/order/'.$ticket->ticket_id),
+			l($ticket->ticket_id, 'admin/store/orders/'.$ticket->ticket_id),
 			uc_currency_format($ticket->amount),
 			uc_currency_format($ticket->order_total),
 			uc_currency_format($ticket->amount_paid),
