@@ -314,7 +314,13 @@ function _ggw_pos_report_daily() {
 
 		$rma_sales = db_result(db_query("SELECT (-1)*SUM(total_refund) FROM pos_api_expose_rma_refund_log rl WHERE rl.timestamp >= '%s' AND rl.timestamp <= '%s' AND total_refund < 0", $start_date, $end_date));
 
-		$total_sales = $cash_sales-$cash_change+$check_sales+$cc_sales+$mo_sales+$ar_sales+$check_sales_post+$rma_sales;
+		$total_sales = bcadd($cash_sales, $check_sales, 6);
+		$total_sales = bcsub($total_sales, $cash_change, 6);
+		$total_sales = bcadd($total_sales, $cc_sales, 6);
+		$total_sales = bcadd($total_sales, $mo_sales, 6);
+		$total_sales = bcadd($total_sales, $ar_sales, 6);
+		$total_sales = bcadd($total_sales, $check_sales_post, 6);
+		$total_sales = bcadd($total_sales, $rma_sales, 2);
 
 		$rma_returns = db_result(db_query("SELECT SUM(total_refund) FROM pos_api_expose_rma_refund_log rl WHERE rl.timestamp >= '%s' AND rl.timestamp <= '%s' AND total_refund > 0", $start_date, $end_date))+$rma_cash_out;
 
