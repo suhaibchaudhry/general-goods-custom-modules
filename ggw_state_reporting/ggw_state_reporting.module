@@ -356,74 +356,75 @@ function _ggw_state_reporting_defaults($tid) {
 }
 
 function ggw_state_reporting_calculate_tax($order) {
-  $taxes = uc_taxes_rate_load();
-  $user = user_load($order->uid);
+	if($order->order_status != 'pos_return' && $order->order_status != 'pos_return_closed') {
+  	  $taxes = uc_taxes_rate_load();
+  	  $user = user_load($order->uid);
+	  // Calculate taxes per product.
+	  $order_taxes = array();
+	  if($order->products) {
+		  foreach ($order->products as $product) {
+			//Update cost on ticket
+	                $cost = pos_stock_management_average_cost($product->nid);
+	                if(empty($cost)) {
+	                   //Use default automagic cost.
+	                   $cost = db_result(db_query("SELECT cost FROM {uc_products} WHERE nid = '%d'", $product->nid));
+	                }
 
-  // Calculate taxes per product.
-  $order_taxes = array();
-  if($order->products) {
-	  foreach ($order->products as $product) {
-		//Update cost on ticket
-                $cost = pos_stock_management_average_cost($product->nid);
-                if(empty($cost)) {
-                   //Use default automagic cost.
-                   $cost = db_result(db_query("SELECT cost FROM {uc_products} WHERE nid = '%d'", $product->nid));
-                }
+			db_query("UPDATE uc_order_products SET cost = '%s' WHERE order_product_id = '%d'", $cost, $product->order_product_id);	   	
 
-		db_query("UPDATE uc_order_products SET cost = '%s' WHERE order_product_id = '%d'", $cost, $product->order_product_id);	   	
+			$tax_id = 0;
+			$product_tax_settings = _ggw_state_reporting_product_taxes($product->nid);
 
-		$tax_id = 0;
-		$product_tax_settings = _ggw_state_reporting_product_taxes($product->nid);
+		   	if($product_tax_settings->retail_tax == 'Y' && $user->tax_settings->retail_tax == 'Y') {
+		   		$tax_id = RETAIL_TAX_ID;
+		   	} 
 
-	   	if($product_tax_settings->retail_tax == 'Y' && $user->tax_settings->retail_tax == 'Y') {
-	   		$tax_id = RETAIL_TAX_ID;
-	   	} 
+		   	if($product_tax_settings->wholesale_tax == 'Y' && $user->tax_settings->wholesale_tax == 'Y') {
+		   		$tax_id = WHOLESALE_TAX_ID;
+		   	}
 
-	   	if($product_tax_settings->wholesale_tax == 'Y' && $user->tax_settings->wholesale_tax == 'Y') {
-	   		$tax_id = WHOLESALE_TAX_ID;
-	   	}
+		   	if($product_tax_settings->retail_tax == 'Y' && $order->uid == 0) {
+		   		$tax_id = RETAIL_TAX_ID;
+		   	}
 
-	   	if($product_tax_settings->retail_tax == 'Y' && $order->uid == 0) {
-	   		$tax_id = RETAIL_TAX_ID;
-	   	}
+		    if (empty($tax_id) || empty($taxes[$tax_id]) || empty($taxes[$tax_id]->rate)) {
+		      continue;
+		    }
 
-	    if (empty($tax_id) || empty($taxes[$tax_id]) || empty($taxes[$tax_id]->rate)) {
-	      continue;
-	    }
-
-	    $total = $product->price * $product->qty;
-	    $order_taxes[$tax_id]['taxable_amount'] += $total;
-	    $order_taxes[$tax_id]['amount'] += $total * $taxes[$tax_id]->rate;
+		    $total = $product->price * $product->qty;
+		    $order_taxes[$tax_id]['taxable_amount'] += $total;
+		    $order_taxes[$tax_id]['amount'] += $total * $taxes[$tax_id]->rate;
+		  }
 	  }
-  }
-  /*
-  ob_start();
-  var_dump($order_taxes);
-  var_dump($taxes);
-  $ob = ob_get_clean();
-  watchdog('emergency', $ob);
-  */
-  // Pack taxes in Ubercart hook_calculate_tax format as in uc_taxes_apply_tax().
-  if (!empty($order_taxes)) {
-    $order_taxes_line_items = array();
-    foreach ($order_taxes as $tax_id => $order_tax) {
-      $tax = $taxes[$tax_id];
-      $line_item = (object)array(
-        'id' => $tax->id,
-        'name' => $tax->name,
-        'amount' => $order_tax['amount'],
-        'weight' => $tax->weight,
-        'summed' => 1,
-      );
-      $line_item->data = array(
-        'tax_id' => $tax->id,
-        'tax_rate' => $tax->rate,
-        'taxable_amount' => $order_tax['taxable_amount'],
-        'tax_jurisdiction' => $tax->name,
-      );
-      $order_taxes_line_items[$tax_id] = $line_item;
-    }
-    return $order_taxes_line_items;
+	  /*
+	  ob_start();
+	  var_dump($order_taxes);
+	  var_dump($taxes);
+	  $ob = ob_get_clean();
+	  watchdog('emergency', $ob);
+	  */
+	  // Pack taxes in Ubercart hook_calculate_tax format as in uc_taxes_apply_tax().
+	  if (!empty($order_taxes)) {
+	    $order_taxes_line_items = array();
+	    foreach ($order_taxes as $tax_id => $order_tax) {
+	      $tax = $taxes[$tax_id];
+	      $line_item = (object)array(
+	        'id' => $tax->id,
+	        'name' => $tax->name,
+	        'amount' => $order_tax['amount'],
+	        'weight' => $tax->weight,
+	        'summed' => 1,
+	      );
+	      $line_item->data = array(
+	        'tax_id' => $tax->id,
+	        'tax_rate' => $tax->rate,
+	        'taxable_amount' => $order_tax['taxable_amount'],
+	        'tax_jurisdiction' => $tax->name,
+	      );
+	      $order_taxes_line_items[$tax_id] = $line_item;
+	    }
+	    return $order_taxes_line_items;
+	  }
   }
 }
 
