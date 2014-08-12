@@ -436,10 +436,30 @@ function _ggw_pos_report_daily() {
 			uc_currency_format($check_sales_post, false)
 		);
 
-		$rows[] = array(
-			'Invoice Total',
-			uc_currency_format($total_transacs, false)
-		);
+		$error = bcsub($total_sales, $total_transacs, 6);
+		$positivity = bccomp($error, "0", 6);
+		if($positivity == -1) {
+			$error = bcmul("-1", $error, 6);
+		}
+
+		$error_range = bccomp($error, "0.2", 6);
+		$no_error = bccomp($error, "0", 6);
+		if($no_error != 0 && $error_range == -1) {
+			$rows[] = array(
+				'Invoice Total',
+				uc_currency_format($total_sales, false).' (Rounding Error: '.$error.')'
+			);
+		} elseif($no_error == 0) {
+			$rows[] = array(
+				'Invoice Total',
+				uc_currency_format($total_transacs, false)
+			);
+		} else {
+			$rows[] = array(
+				'Invoice Total',
+				uc_currency_format($total_transacs, false).' (Error: '.$error.')'
+			);
+		}
 
 		$content .= theme('table', $header, $rows);
 	}
