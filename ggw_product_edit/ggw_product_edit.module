@@ -27,7 +27,7 @@ function ggw_inconsitent_tickets() {
 		FROM pos_api_expose_transaction_log cu
 		INNER JOIN uc_orders o ON cu.ticket_id = o.order_id
 		LEFT JOIN pos_api_expose_cash_log cl ON cu.cash_pid = cl.pid
-		WHERE cu.amount <> o.order_total");
+		WHERE ABS(cu.amount-o.order_total) > '0.01'");
 
 	$header = array('Customer', 'Employee', 'Ticket #', 'Closed Amount', 'Current Invoice Amount', 'Cash Paid', 'Change Made', 'Ticket Closing Amount', 'Date Created', 'Date Modified');
 	$rows = array();
