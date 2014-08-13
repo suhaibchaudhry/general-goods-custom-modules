@@ -36,9 +36,7 @@ function _ggw_pos_report_daily() {
 								FROM user_term_credits_settlements s
 								WHERE s.settlement_date >= '%s' AND s.settlement_date <= '%s'", $start_date, $end_date));
 
-		$transacs_count = db_result(db_query("SELECT COUNT(*)
-								FROM user_term_credits_settlements s
-								WHERE s.settlement_date >= '%s' AND s.settlement_date <= '%s'", $start_date, $end_date));
+		$transacs_count = 0;
 
 		$header = array('Date', 'Register', 'Customer', 'Payment', 'Payby', 'Amount', 'Employee');
 		$payment_types = array(
@@ -51,6 +49,7 @@ function _ggw_pos_report_daily() {
 		$rows = array();
 		$settlement_close = array();
 		while($settlement = db_fetch_object($settlements)) {
+			$transacs_count++;
 			if($settlement->payment_type == 'pos_payment') {
 				$settlement_components = explode("\n", $settlement->remarks);
 				foreach($settlement_components as $settlement_component) {
