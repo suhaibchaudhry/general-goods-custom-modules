@@ -293,12 +293,7 @@ function _ggw_pos_report_daily() {
 		$transacs_count++;
 	}
 
-	$content .= theme('table', $header, $rows, array('class' => 'invoice-report'));
-
 	if(!$dp) {
-		$header = array('Total Registers', '', '', '');
-		$rows = array();
-
 		$cash_sales = db_result(db_query("SELECT SUM(cl.amount_paid) FROM pos_api_expose_cash_log cl INNER JOIN pos_api_expose_transaction_log tl ON tl.cash_pid = cl.pid WHERE cl.timestamp >= '%s' AND cl.timestamp <= '%s'", $start_date, $end_date));
 
 		$cash_change = db_result(db_query("SELECT SUM(cl.change) FROM pos_api_expose_cash_log cl INNER JOIN pos_api_expose_transaction_log tl ON tl.cash_pid = cl.pid WHERE cl.timestamp >= '%s' AND cl.timestamp <= '%s'", $start_date, $end_date));
@@ -320,6 +315,56 @@ function _ggw_pos_report_daily() {
 		$total_sales = bcadd($total_sales, $ar_sales, 6);
 		$total_sales = bcadd($total_sales, $check_sales_post, 6);
 		$total_sales = bcadd($total_sales, $rma_sales, 2);
+
+		$error = bcsub($total_sales, $total_transacs, 6);
+		$positivity = bccomp($error, "0", 6);
+		if($positivity == -1) {
+			$error = bcmul("-1", $error, 6);
+		}
+
+		$error_range = bccomp($error, "0.2", 6);
+		$no_error = bccomp($error, "0", 6);
+		if($no_error != 0 && $error_range == -1) {
+			$rows[] = array(
+				'',
+				'',
+				'',
+				'Invoice Total',
+				uc_currency_format($total_sales, false).' (Rounding Error: '.$error.')',
+				'',
+				'',
+				''
+			);
+		} elseif($no_error == 0) {
+			$rows[] = array(
+				'',
+				'',
+				'',
+				'Invoice Total',
+				uc_currency_format($total_transacs, false),
+				'',
+				'',
+				''
+			);
+		} else {
+			$rows[] = array(
+				'',
+				'',
+				'',
+				'Invoice Total',
+				uc_currency_format($total_transacs, false).' (Error: '.$error.')',
+				'',
+				'',
+				''
+			);
+		}
+	}
+
+	$content .= theme('table', $header, $rows, array('class' => 'invoice-report'));
+
+	if(!$dp) {
+		$header = array('Total Registers', '', '', '');
+		$rows = array();
 
 		$rma_returns = db_result(db_query("SELECT SUM(total_refund) FROM pos_api_expose_rma_refund_log rl WHERE rl.timestamp >= '%s' AND rl.timestamp <= '%s' AND total_refund > 0", $start_date, $end_date))+$rma_cash_out;
 
@@ -434,31 +479,6 @@ function _ggw_pos_report_daily() {
 			'Post Dated Check',
 			uc_currency_format($check_sales_post, false)
 		);
-
-		$error = bcsub($total_sales, $total_transacs, 6);
-		$positivity = bccomp($error, "0", 6);
-		if($positivity == -1) {
-			$error = bcmul("-1", $error, 6);
-		}
-
-		$error_range = bccomp($error, "0.2", 6);
-		$no_error = bccomp($error, "0", 6);
-		if($no_error != 0 && $error_range == -1) {
-			$rows[] = array(
-				'Invoice Total',
-				uc_currency_format($total_sales, false).' (Rounding Error: '.$error.')'
-			);
-		} elseif($no_error == 0) {
-			$rows[] = array(
-				'Invoice Total',
-				uc_currency_format($total_transacs, false)
-			);
-		} else {
-			$rows[] = array(
-				'Invoice Total',
-				uc_currency_format($total_transacs, false).' (Error: '.$error.')'
-			);
-		}
 
 		$content .= theme('table', $header, $rows);
 	}
