@@ -480,6 +480,18 @@ function _ggw_pos_report_daily() {
 			uc_currency_format($check_sales_post, false)
 		);
 
+		$total_payments = "0";
+		$total_payments = bcadd($total_payments, $check_sales, 6);
+		$total_payments = bcadd($total_payments, $cash_sales, 6);
+		$total_payments = bcadd($total_payments, $mo_sales, 6);
+		$total_payments = bcadd($total_payments, $cc_sales, 6);
+		$total_payments = bcadd($total_payments, $check_sales_post, 6);
+
+		$rows[] = array(
+			'Total Payments',
+			uc_currency_format($total_payments, false)
+		);
+
 		$content .= theme('table', $header, $rows);
 	}
 
