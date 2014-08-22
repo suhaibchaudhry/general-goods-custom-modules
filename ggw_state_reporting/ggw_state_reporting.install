@@ -23,6 +23,12 @@ function ggw_state_reporting_schema() {
 				'description' => "Reported packaging of the category.",
 				'not null' => TRUE
 			),
+			'msa_cat' => array(
+				'type' => 'varchar',
+				'length' => 255,
+				'description' => "Reported packaging of the category.",
+				'not null' => TRUE
+			),
 			'invoice_category' => array(
 				'type' => 'varchar',
 				'length' => 255,
@@ -77,4 +83,18 @@ function ggw_state_reporting_install() {
 
 function ggw_state_reporting_uninstall() {
 	drupal_uninstall_schema('ggw_state_reporting');
+}
+
+function ggw_state_reporting_update_6010() {
+	$ret = array();
+	$table = 'ggw_state_reporting_terms';
+	$field_name = 'msa_cat';
+	$field = array(
+				'type' => 'varchar',
+				'length' => 255,
+				'description' => "Reported packaging of the category.",
+				'not null' => TRUE
+			);
+
+	db_add_field($ret, $table, $field_name, $field, array());
 }
