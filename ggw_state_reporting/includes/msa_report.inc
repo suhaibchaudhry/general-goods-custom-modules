@@ -1,7 +1,8 @@
 <?php
 function ggw_state_reporting_download_msa($start_date, $end_date) {
-	header("Content-Type: text/plain");
-	//header('Content-disposition: attachment;filename=weekly_msa_report.txt');
+	//header("Content-Type: text/plain");
+	header('Content-disposition: attachment;filename=weekly_msa_report.txt');
+
 	$company = 'GENERAL GOODS WHOLESALE';
 	$address = '8000 HARWIN, SUITE 200 HOUSTON, TX 77036';
 
@@ -12,6 +13,7 @@ function ggw_state_reporting_download_msa($start_date, $end_date) {
 
 	$start_date_r = date('Ymd', $start_date);
 	$end_date_r = date('Ymd', $end_date);
+	$date_r = date('Ymd');
 
 	$report = '';
 
@@ -22,15 +24,36 @@ function ggw_state_reporting_download_msa($start_date, $end_date) {
 	$report .= ggw_state_reporting_msa_cell('TOBACO ID: '.$tobacco_id, 84);
 	$report .= ggw_state_reporting_msa_cell($phone, 15);
 	$report .= ggw_state_reporting_msa_cell($fax, 70);
-	$report .= '000100000002'.$end_date_r.'1'."\n";
+	$report .= '000100000002'.$date_r.'1'."\n";
 
-	$report .= ggw_state_reporting_msa_get_inventory_report();
-	$report .= ggw_msa_generate_customer_report($start_date, $end_date);
+	$total_products = 0;
+	$total_customers = 0;
+	$total_purchases = 0;
+	$total_amount = 0;
+	$total_qty = 0;
+
+	$report .= ggw_state_reporting_msa_get_inventory_report($total_products);
+	$report .= ggw_msa_generate_customer_report($start_date, $end_date, $total_customers, $total_purchases, $total_amount, $total_qty);
+
+	//Totals
+	$report .= 'TOT14047001'.$end_date_r.ggw_state_reporting_msa_cell($total_products, 8, STR_PAD_LEFT, '0');
+	$report .= '  ';
+	$report .= ggw_state_reporting_msa_cell($total_customers, 7, STR_PAD_LEFT, '0');
+	$report .= '  ';
+
+	$purchases = ggw_state_reporting_msa_cell($total_purchases, 8, STR_PAD_LEFT, '0');
+	$report .= ggw_state_reporting_msa_cell($purchases, 48);
+	$report .= '001 ';
+
+	$qty = ggw_state_reporting_msa_cell(number_format($total_qty, 2, '.', ''), 14, STR_PAD_LEFT, '0');
+	$report .= ggw_state_reporting_msa_cell($qty, 32);
+	$report .= '003 ';
+	$report .= ggw_state_reporting_msa_cell(number_format($total_amount, 2, '.', ''), 14, STR_PAD_LEFT, '0');
 
 	print $report;
 }
 
-function ggw_msa_generate_customer_report($start_date, $end_date) {
+function ggw_msa_generate_customer_report($start_date, $end_date, &$total_customers, &$total_purchases, &$total_amount, &$total_qty) {
 	$report = '';
 
 	$customers = db_query("SELECT uo.uid, uo.order_status, GROUP_CONCAT(DISTINCT uo.order_id ORDER BY uo.order_id ASC SEPARATOR ',') AS tickets FROM {uc_orders} uo
@@ -61,6 +84,7 @@ function ggw_msa_generate_customer_report($start_date, $end_date) {
 
 	 	while($purchase = db_fetch_object($purchases)) {
 	 		if(!isset($customers_displayed[$customer->uid])) {
+	 			$total_customers++;
 			 	$report .= 'SID';
 			 	$report .= ggw_state_reporting_msa_cell($first_part, 8);
 			 	$report .= ggw_state_reporting_msa_cell($second_part, 16);
@@ -82,6 +106,7 @@ function ggw_msa_generate_customer_report($start_date, $end_date) {
 	 		$report .= ggw_state_reporting_msa_cell($second_part, 16);
 	 		$report .= ggw_state_reporting_msa_cell($purchase->model, 75);
 	 		$report .= '001';
+	 		$total_purchases++;
 
 	 		//Positive Qty for closed ticket
 	 		if($customer->order_status == 'pos_completed') {
@@ -96,8 +121,12 @@ function ggw_msa_generate_customer_report($start_date, $end_date) {
 	 		//Positive total for closed tickets
 	 		if($customer->order_status == 'pos_completed') {
 	 			$report .= ' ';
+	 			$total_amount += $purchase->price;
+	 			$total_qty += $purchase->quantity;
 	 		} else {
 	 			$report .= '-';
+	 			$total_amount -= $purchase->price;
+	 			$total_qty -= $purchase->quantity;
 	 		}
 
 	 		$report .= ggw_state_reporting_msa_cell(number_format($purchase->price, 2, '.', ''), 7, STR_PAD_LEFT, '0');
@@ -108,7 +137,7 @@ function ggw_msa_generate_customer_report($start_date, $end_date) {
 	 return $report;
 }
 
-function ggw_state_reporting_msa_get_inventory_report() {
+function ggw_state_reporting_msa_get_inventory_report(&$total_products) {
 	$sql = "SELECT n.nid, n.title, up.model, ctp.field_prod_packing_value, ctp.field_msa_discount_remarks_value, ctp.field_prod_form_value, sr.vid as tid, sr.msa_cat FROM uc_products up
 			INNER JOIN term_node tn ON up.nid = tn.nid
  			INNER JOIN node n ON up.nid = n.nid
@@ -121,6 +150,7 @@ function ggw_state_reporting_msa_get_inventory_report() {
 	$products = db_query($sql);
 
 	while($product = db_fetch_object($products)) {
+		$total_products++;
 		$content .= $bid.ggw_state_reporting_msa_cell($product->model, 12, STR_PAD_LEFT);
 		$content .= '00'.ggw_state_reporting_msa_cell($product->model, 12, STR_PAD_LEFT, '0');
 		
@@ -164,6 +194,7 @@ function ggw_state_reporting_msa_get_inventory_report() {
 		$content .= ggw_state_reporting_msa_cell($padded_qty, 10, STR_PAD_LEFT, '0');
 
 		$content .= "\n";
+		$total_products++;
 	}
 
 	return $content;
