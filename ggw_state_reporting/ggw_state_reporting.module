@@ -17,18 +17,20 @@ function ggw_state_reporting_menu() {
     'type' => MENU_NORMAL_ITEM
    );
    
-   $items['admin/settings/tobacco-reporting/state'] = array(
+   $items['admin/settings/tobacco-reporting/state/%/%'] = array(
     'title' => t('State Reporting Callback'),
     'description' => t('Get tobacco report.'),
     'page callback' => 'ggw_state_reporting_download_state',
     'access arguments' => array('access site reports'),
+    'page arguments' => array(4, 5),
     'type' => MENU_CALLBACK
    );
    
-   $items['admin/settings/tobacco-reporting/msa'] = array(
+   $items['admin/settings/tobacco-reporting/msa/%/%'] = array(
     'title' => t('MSA Reporting Callback'),
     'description' => t('Get tobacco report.'),
     'page callback' => 'ggw_state_reporting_download_msa',
+    'page arguments' => array(4, 5),
     'access arguments' => array('access site reports'),
     'type' => MENU_CALLBACK,
     'file' => 'includes/msa_report.inc'
@@ -135,27 +137,11 @@ function ggw_state_reporting_retail_markup_factor($nid) {
 }
 
 function ggw_state_reporting_admin() {
-	if($_GET['register_select']) {
-		$register_select = $_GET['register_select'];
-	} else {
-		$register_select = false;
-	}
+	$content = drupal_get_form('ggw_state_reporting_date_range_form', 'admin/settings/tobacco-reporting', false, false);
 
-	if($_GET['start_date']) {
-		$start_date = strtotime($_GET['start_date']['date'].' '.$_GET['start_date']['time']);
-	} else {
-		$start_date = mktime(7, 0, 0);
-	}
+	$content .= l('State Report', 'admin/settings/tobacco-reporting/state').'<br />'.l('MSA Report', 'admin/settings/tobacco-reporting/msa');
 
-	if($_GET['end_date']) {
-		$end_date = strtotime($_GET['end_date']['date'].' '.$_GET['end_date']['time']);
-	} else {
-		$end_date = mktime(22, 0, 0);
-	}
-
-	$content = drupal_get_form('ggw_state_reporting_date_range_form');
-
-	return l('State Report', 'admin/settings/tobacco-reporting/state').'<br />'.l('MSA Report', 'admin/settings/tobacco-reporting/msa');	
+	return $content;	
 }
 
 function ggw_state_reporting_user($op, &$edit, &$account, $category = NULL) {
@@ -289,6 +275,13 @@ function ggw_state_reporting_form_alter(&$form, &$form_state, $form_id) {
 			'#default_value' => $defaults->packaging
 		);
 
+		$form['reporting-options']['msa_cat'] = array(
+			'#type' => 'textfield',
+			'#title' => t('MSA CAT ID'),
+			'#description' => 'MSA Category Id.',
+			'#default_value' => $defaults->msa_cat
+		);
+
 		$form['reporting-options']['retail_markup'] = array(
 			'#type' => 'textfield',
 			'#title' => t('Retail Markup Percentage'),
@@ -303,7 +296,7 @@ function ggw_state_reporting_taxonomy($op, $type, $array = NULL) {
 		$tid = $array['tid'];
 		if(($op == 'insert' || $op == 'update') && isset($array['display-setting'])) {
 			db_query("DELETE FROM {ggw_state_reporting_terms} WHERE vid = %d", $tid);
-			db_query("INSERT INTO {ggw_state_reporting_terms} VALUES (%d, %d, %d, '%s', '%s')", $tid, $array['display-setting'], $array['packaging'], $array['invoice-category'], $array['retail_markup']);
+			db_query("INSERT INTO {ggw_state_reporting_terms} (vid, setting, packaging, invoice_category, retail_markup, msa_cat) VALUES (%d, %d, '%s', '%s', '%s', '%s')", $tid, $array['display-setting'], $array['packaging'], $array['invoice-category'], $array['retail_markup'], $array['msa_cat']);
 		} elseif($op == 'delete') {
 			db_query("DELETE FROM {ggw_state_reporting_terms} WHERE vid = %d", $tid);
 		}
@@ -404,7 +397,7 @@ function ggw_state_reporting_register_options() {
 	return $options;
 }
 
-function ggw_state_reporting_date_range_form($form_state) {
+function ggw_state_reporting_date_range_form($form_state, $path = false, $dp = true, $registers = true) {
 	drupal_add_css(drupal_get_path('module', 'ggw_state_reporting').'/css/sales_report_form.css');
 	drupal_add_js(drupal_get_path('module', 'ggw_state_reporting').'/js/sales_report_form.js');
 	$form = array();
@@ -442,44 +435,99 @@ function ggw_state_reporting_date_range_form($form_state) {
 		'#date_year_range' => '-3:+3' // Optional, used to set the year range (back 3 years and forward 3 years is the default).
 	);
 
-	$form['register_select'] = array(
-		'#type' => 'select',
-		'#title' => 'Register',
-		'#options' => ggw_state_reporting_register_options()
-	);
+	if($registers) {
+		$form['register_select'] = array(
+			'#type' => 'select',
+			'#title' => 'Register',
+			'#options' => ggw_state_reporting_register_options()
+		);
+	}
 
 	$form['controls_start'] = array(
 		'#type' => 'markup',
 		'#value' => '<div class="report-controls">'
 	);
 
-	$form['apply'] = array(
-		'#type' => 'submit',
-		'#value' => 'Apply'
-	);
+	if($registers) {
+		$form['apply'] = array(
+			'#type' => 'submit',
+			'#value' => 'Apply'
+		);
+	} else {
+		$form['download_msa'] = array(
+			'#type' => 'submit',
+			'#value' => 'Download MSA Report'
+		);
 
-	$form['reset_button'] = array(
-        '#type' => 'markup',
-        '#value' => l('Reset To Today', 'admin/store/reports/pos-sales')
-    );
+		$form['download_state'] = array(
+			'#type' => 'submit',
+			'#value' => 'Download State Report'
+		);
+	}
+
+	if($path) {
+		$form['reset_button'] = array(
+    	    '#type' => 'markup',
+    	    '#value' => l('Reset To Today', $path)
+    	);
+	} else {
+		$form['reset_button'] = array(
+    	    '#type' => 'markup',
+    	    '#value' => l('Reset To Today', 'admin/store/reports/pos-sales')
+    	);
+	}
 
     $form['controls_end'] = array(
 		'#type' => 'markup',
 		'#value' => '</div>'
 	);
 
-	$form['dp'] = array(
-		'#type' => 'hidden',
-		'#value' => (int)$_GET['dp']
-	);
+    if($dp) {
+		$form['dp'] = array(
+			'#type' => 'hidden',
+			'#value' => (int)$_GET['dp']
+		);
+	}
 
-	$form['#method'] = 'get';
+	if($registers) {
+		$form['#method'] = 'get';
+	}
 
 	return $form;
 }
 
 function ggw_state_reporting_date_range_form_submit($form, $form_state) {
-	$values = $form_state['values'];
+	if($form_state['clicked_button']['#parents'][0] == 'download_msa') {
+		if($form_state['values']['start_date']) {
+			$start_date = strtotime($form_state['values']['start_date']);
+		} else {
+			$start_date = mktime(7, 0, 0);
+		}
+
+		if($form_state['values']['end_date']) {
+			$end_date = strtotime($form_state['values']['end_date']);
+		} else {
+			$end_date = mktime(22, 0, 0);
+		}
+
+		drupal_goto('admin/settings/tobacco-reporting/msa/'.$start_date.'/'.$end_date);
+	} elseif($form_state['clicked_button']['#parents'][0] == 'download_state') {
+		if($form_state['values']['start_date']) {
+			$start_date = strtotime($form_state['values']['start_date']);
+		} else {
+			$start_date = mktime(7, 0, 0);
+		}
+
+		if($form_state['values']['end_date']) {
+			$end_date = strtotime($form_state['values']['end_date']);
+		} else {
+			$end_date = mktime(22, 0, 0);
+		}
+
+		drupal_goto('admin/settings/tobacco-reporting/state/'.$start_date.'/'.$end_date);
+	} else {
+		$values = $form_state['values'];
+	}
 }
 
 function _ggw_state_reporting_cust_name($uid) {
