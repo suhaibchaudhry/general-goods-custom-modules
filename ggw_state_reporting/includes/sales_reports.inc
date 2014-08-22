@@ -1,4 +1,3 @@
-
 <?php
 function _ggw_pos_report_daily() {
 	if($_GET['register_select']) {

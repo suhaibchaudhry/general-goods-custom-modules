@@ -30,7 +30,8 @@ function ggw_state_reporting_menu() {
     'description' => t('Get tobacco report.'),
     'page callback' => 'ggw_state_reporting_download_msa',
     'access arguments' => array('access site reports'),
-    'type' => MENU_CALLBACK
+    'type' => MENU_CALLBACK,
+    'file' => 'includes/msa_report.inc'
    );
 
    $items['admin/store/reports/pos-sales'] = array(
@@ -134,6 +135,26 @@ function ggw_state_reporting_retail_markup_factor($nid) {
 }
 
 function ggw_state_reporting_admin() {
+	if($_GET['register_select']) {
+		$register_select = $_GET['register_select'];
+	} else {
+		$register_select = false;
+	}
+
+	if($_GET['start_date']) {
+		$start_date = strtotime($_GET['start_date']['date'].' '.$_GET['start_date']['time']);
+	} else {
+		$start_date = mktime(7, 0, 0);
+	}
+
+	if($_GET['end_date']) {
+		$end_date = strtotime($_GET['end_date']['date'].' '.$_GET['end_date']['time']);
+	} else {
+		$end_date = mktime(22, 0, 0);
+	}
+
+	$content = drupal_get_form('ggw_state_reporting_date_range_form');
+
 	return l('State Report', 'admin/settings/tobacco-reporting/state').'<br />'.l('MSA Report', 'admin/settings/tobacco-reporting/msa');	
 }
 
@@ -219,68 +240,6 @@ function ggw_state_reporting_msa_cell($data, $len, $pad_type = STR_PAD_RIGHT, $p
 	} else {
 		return str_pad($data, $len, $pad_string, $pad_type);
 	}
-}
-
-function ggw_state_reporting_msa_get_inventory_report() {
-	$sql = "SELECT n.title, up.model FROM uc_products up
-			INNER JOIN term_node tn ON up.nid = tn.nid
- 			INNER JOIN node n ON up.nid = n.nid
-			INNER JOIN ggw_state_reporting_terms sr ON sr.vid = tn.tid
-			WHERE setting > 1";
-
-	$content = '';
-	$bid = ggw_state_reporting_msa_cell('BID', 5);
-	$products = db_query($sql);
-
-	while($product = db_fetch_object($products)) {
-		$content .= $bid.ggw_state_reporting_msa_cell($product->model, 26);
-		$content .= "\n";
-	}
-
-	return $content;
-}
-
-function ggw_state_reporting_download_msa() {
-	header("Content-Type: text/plain");
-	//header('Content-disposition: attachment;filename=weekly_msa_report.txt');
-
-	$company = 'GENERAL GOODS WHOLESALE';
-	$address = '8000 HARWIN, SUITE 200 HOUSTON, TX 77036';
-
-	$msa_number = '14047001';
-	$tobacco_id = '93044639';
-	$phone = '7137803636';
-	$fax = '7137801718';
-
-	$start_date = strtotime('-1 week');
-	$end_date = strtotime('now');
-
-	$start_date_r = date('Ymd', $start_date);
-	$end_date_r = date('Ymd', $end_date);
-
-	$report = '';
-
-	//MSA Report Header
-	$report .= ggw_state_reporting_msa_cell('HID'.$msa_number.'TOB', 16);
-	$report .= ggw_state_reporting_msa_cell('W'.$start_date_r.$company, 41);
-	$report .= ggw_state_reporting_msa_cell($address, 90);
-	$report .= ggw_state_reporting_msa_cell('TOBACO ID: '.$tobacco_id, 84);
-	$report .= ggw_state_reporting_msa_cell($phone, 15);
-	$report .= ggw_state_reporting_msa_cell($fax, 70);
-	$report .= '000100000002'.$end_date_r.'1'."\n\n";
-
-	$report .= ggw_state_reporting_msa_get_inventory_report();
-
-	/*
-	$report_entries = db_query("SELECT title, ucp.model, td.name, srt.packaging, SUM(qty) AS tQty, SUM(price) as tPrice FROM uc_order_products uop INNER JOIN term_node tn ON uop.nid = tn.nid INNER JOIN term_data td ON tn.tid = td.tid INNER JOIN ggw_state_reporting_terms srt ON tn.tid = srt.vid INNER JOIN uc_products ucp ON uop.nid = ucp.nid WHERE srt.setting IN ('2', '3') GROUP BY uop.nid");
-
-	$content = "HID14047001TOB  W20121221GENERAL GOODS WHOLESALE         8000 HARWIN, SUITE 200 HOUSTON, TX 77036                                                  TOBACO ID: 93044639                                                                 7137803636     7137801718                                                            000100000002201212261\n";
-	while($report_entry = db_fetch_object($report_entries)) {
-		$content .= 'BID	'.$report_entry->model.$report_entry->title.'                                                                               000024N75    003261                                                                                                 003 0000162.00'."\n";
-	
-	}*/
-	//return $content;
-	print $report;
 }
 
 function ggw_state_reporting_invoice_categories($vid) {
@@ -470,7 +429,7 @@ function ggw_state_reporting_date_range_form($form_state) {
 		'#date_format' => $format,
 		'#date_label_position' => 'within', // See other available attributes and what they do in date_api_elements.inc
 		'#date_timezone' => 'America/Chicago', // Optional, if your date has a timezone other than the site timezone.
-		'#date_year_range' => '-3:+3', // Optional, used to set the year range (back 3 years and forward 3 years is the default).
+		'#date_year_range' => '-3:+3' // Optional, used to set the year range (back 3 years and forward 3 years is the default).
 	);
 
 	$form['end_date'] = array(
@@ -480,7 +439,7 @@ function ggw_state_reporting_date_range_form($form_state) {
 		'#date_format' => $format,
 		'#date_label_position' => 'within', // See other available attributes and what they do in date_api_elements.inc
 		'#date_timezone' => 'America/Chicago', // Optional, if your date has a timezone other than the site timezone.
-		'#date_year_range' => '-3:+3', // Optional, used to set the year range (back 3 years and forward 3 years is the default).
+		'#date_year_range' => '-3:+3' // Optional, used to set the year range (back 3 years and forward 3 years is the default).
 	);
 
 	$form['register_select'] = array(
