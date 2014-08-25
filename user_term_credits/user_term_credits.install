@@ -337,6 +337,43 @@ function user_term_credits_schema() {
     		'sid'        => array('sid')
   		)
 	);
+
+	$schema['user_term_credits_rma_log'] = array(
+		'description' => 'A log of rma usage for credit payments.',
+		'fields' => array(
+			'pid' => array(
+				'type' => 'serial',
+				'not null' => TRUE,
+				'unsigned' => TRUE,
+				'description' => 'The payment event log id.'
+			),
+			'sid' => array(
+				'type' => 'int',
+        		'not null' => TRUE,
+        		'default' => 0,
+				'unsigned' => TRUE,
+				'description' => "Settlement ID"
+			),
+			'paid_amount' => array(
+				'type' => 'numeric',
+		        'precision' => 16,
+		        'scale' => 5,
+		        'not null' => TRUE,
+		        'default' => 0.0,
+			),
+			'rma_pid' => array(
+				'type' => 'int',
+        		'not null' => TRUE,
+        		'default' => 0,
+				'unsigned' => TRUE,
+				'description' => "Settlement ID"
+			)
+		),
+		'primary key' => array('pid'),
+		'indexes' => array(
+    		'sid'        => array('sid')
+  		)
+	);
 	
 	return $schema;
 }
@@ -381,6 +418,15 @@ function user_term_credits_update_6015() {
 		'user_term_credits_cash_log',
 		'user_term_credits_money_order_log');
 
+	_user_term_credits_create_new_tables($new_tables);
+}
+
+function user_term_credits_update_6016() {
+	$new_tables = array('user_term_credits_rma_log');
+	_user_term_credits_create_new_tables($new_tables);
+}
+
+function _user_term_credits_create_new_tables($new_tables) {
 	foreach($new_tables as $table_name) {
 		$res = array();
 		$table = drupal_get_schema_unprocessed('user_term_credits', $table_name);
