@@ -138,8 +138,7 @@ function ggw_state_reporting_retail_markup_factor($nid) {
 
 function ggw_state_reporting_admin() {
 	$content = drupal_get_form('ggw_state_reporting_date_range_form', 'admin/settings/tobacco-reporting', false, false);
-
-	$content .= l('State Report', 'admin/settings/tobacco-reporting/state').'<br />'.l('MSA Report', 'admin/settings/tobacco-reporting/msa');
+	//$content .= l('State Report', 'admin/settings/tobacco-reporting/state').'<br />'.l('MSA Report', 'admin/settings/tobacco-reporting/msa');
 
 	return $content;	
 }
