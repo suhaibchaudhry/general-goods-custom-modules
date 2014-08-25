@@ -104,7 +104,7 @@ function ggw_msa_generate_customer_report($start_date, $end_date, &$total_custom
 	 		$report .= 'PUR';
 	 		$report .= ggw_state_reporting_msa_cell($first_part, 8);
 	 		$report .= ggw_state_reporting_msa_cell($second_part, 16);
-	 		$report .= ggw_state_reporting_msa_cell($purchase->model, 75);
+	 		$report .= ggw_state_reporting_msa_cell(ggw_state_reporting_msa_cell($purchase->model, 14, STR_PAD_LEFT, '0'), 75);
 	 		$report .= '001';
 	 		$total_purchases++;
 
@@ -182,7 +182,7 @@ function ggw_state_reporting_msa_get_inventory_report(&$total_products) {
 
 		$content .= '003';
 
-		$status = pos_stock_management_status($nid);
+		$status = pos_stock_management_status($product->nid);
 		$quantity_on_hand = $status['quantity'];
 		if($quantity_on_hand < 0) {
 			$content .= '-';
