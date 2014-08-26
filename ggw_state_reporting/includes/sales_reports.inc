@@ -305,7 +305,7 @@ function _ggw_pos_report_daily() {
 		$mo_sales = db_result(db_query("SELECT SUM(paid_amount) FROM pos_api_expose_money_order_log mo WHERE mo.timestamp >= '%s' AND mo.timestamp <= '%s'", $start_date, $end_date));
 		$ar_sales = db_result(db_query("SELECT SUM(amount) FROM pos_api_expose_transaction_log tl WHERE credit_usage_id > 0 AND tl.timestamp >= '%s' AND tl.timestamp <= '%s'", $start_date, $end_date));
 
-		$rma_sales = db_result(db_query("SELECT (-1)*SUM(total_refund) FROM pos_api_expose_rma_refund_log rl WHERE rl.timestamp >= '%s' AND rl.timestamp <= '%s' AND total_refund < 0", $start_date, $end_date));
+		$rma_sales = db_result(db_query("SELECT (-1)*SUM(total_refund) FROM pos_api_expose_rma_refund_log rl WHERE rl.timestamp >= '%s' AND rl.timestamp <= '%s' AND total_refund < 0 AND rl.pid NOT IN (SELECT crl.rma_pid FROM user_term_credits_rma_log crl)", $start_date, $end_date));
 
 		$total_sales = bcadd($cash_sales, $check_sales, 6);
 		$total_sales = bcsub($total_sales, $cash_change, 6);
