@@ -440,6 +440,10 @@ function ggw_state_reporting_date_range_form($form_state, $path = false, $dp = t
 			'#title' => 'Register',
 			'#options' => ggw_state_reporting_register_options()
 		);
+
+		if($_GET['register_select']) {
+			$form['register_select']['#default_value'] = $_GET['register_select'];
+		}
 	}
 
 	$form['controls_start'] = array(
