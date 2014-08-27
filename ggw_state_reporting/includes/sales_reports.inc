@@ -29,11 +29,21 @@ function _ggw_pos_report_daily() {
 							WHERE s.settlement_date >= '%s' AND s.settlement_date <= '%s'", $start_date, $end_date);*/
 
 	if(!$dp) {
-		$settlements = db_query("SELECT s.sid, u.uid, SUM(s.settlement_amount) AS settlement_amount, s.payment_type, s.remarks, s.settlement_date, s.euid, s.register_id FROM user_term_credits_settlements s LEFT JOIN user_term_credits_usages u ON s.cuid = u.cuid WHERE s.settlement_date >= '%s' AND s.settlement_date <= '%s' GROUP BY u.uid, s.settlement_date ORDER BY s.settlement_date ASC", $start_date, $end_date);
+		if($register_select) {
+			$settlement_sql_inject = "AND s.register_id = '".$register_select."'";
+			$transaction_sql_inject = "AND tl.register_id = '".$register_select."'";
+		} else {
+			$settlement_sql_inject = "";
+			$transaction_sql_inject = "";
+		}
+
+		$settlements_sql = "SELECT s.sid, u.uid, SUM(s.settlement_amount) AS settlement_amount, s.payment_type, s.remarks, s.settlement_date, s.euid, s.register_id FROM user_term_credits_settlements s LEFT JOIN user_term_credits_usages u ON s.cuid = u.cuid WHERE s.settlement_date >= '%s' AND s.settlement_date <= '%s' ".$settlement_sql_inject." GROUP BY u.uid, s.settlement_date ORDER BY s.settlement_date ASC";
+
+		$settlements = db_query($settlements_sql, $start_date, $end_date);
 
 		$total_settlements = db_result(db_query("SELECT SUM(s.settlement_amount)
 								FROM user_term_credits_settlements s
-								WHERE s.settlement_date >= '%s' AND s.settlement_date <= '%s'", $start_date, $end_date));
+								WHERE s.settlement_date >= '%s' AND s.settlement_date <= '%s' ".$settlement_sql_inject, $start_date, $end_date));
 
 		$transacs_count = 0;
 
@@ -186,7 +196,7 @@ function _ggw_pos_report_daily() {
 	LEFT JOIN {".$cc_log_table."} ccl ON tl.cc_pid = ccl.pid
 	LEFT JOIN {".$check_log_table."} chl ON tl.check_pid = chl.pid
 	LEFT JOIN {".$mo_log_table."} mo ON tl.mo_pid = mo.pid
-	WHERE tl.timestamp >= '%s' AND tl.timestamp <= '%s'", $start_date, $end_date);
+	WHERE tl.timestamp >= '%s' AND tl.timestamp <= '%s' ".$transaction_sql_inject, $start_date, $end_date);
 
 	$header = array('Date', 'Register', 'Invoice', 'Customer', 'Total', 'Payby', 'Payment', 'Transaction Type', 'Ticket #', 'Employee');
 	$rows = array();
@@ -293,19 +303,43 @@ function _ggw_pos_report_daily() {
 	}
 
 	if(!$dp) {
-		$cash_sales = db_result(db_query("SELECT SUM(cl.amount_paid) FROM pos_api_expose_cash_log cl INNER JOIN pos_api_expose_transaction_log tl ON tl.cash_pid = cl.pid WHERE cl.timestamp >= '%s' AND cl.timestamp <= '%s'", $start_date, $end_date));
+		$cash_sales = db_result(db_query("SELECT SUM(cl.amount_paid) FROM pos_api_expose_cash_log cl INNER JOIN pos_api_expose_transaction_log tl ON tl.cash_pid = cl.pid WHERE cl.timestamp >= '%s' AND cl.timestamp <= '%s' ".$transaction_sql_inject, $start_date, $end_date));
 
-		$cash_change = db_result(db_query("SELECT SUM(cl.change) FROM pos_api_expose_cash_log cl INNER JOIN pos_api_expose_transaction_log tl ON tl.cash_pid = cl.pid WHERE cl.timestamp >= '%s' AND cl.timestamp <= '%s'", $start_date, $end_date));
+		$cash_change = db_result(db_query("SELECT SUM(cl.change) FROM pos_api_expose_cash_log cl INNER JOIN pos_api_expose_transaction_log tl ON tl.cash_pid = cl.pid WHERE cl.timestamp >= '%s' AND cl.timestamp <= '%s' ".$transaction_sql_inject, $start_date, $end_date));
 		
-		$check_sales = db_result(db_query("SELECT SUM(paid_amount) FROM pos_api_expose_check_log cl WHERE post_dated = '0' AND cl.timestamp >= '%s' AND cl.timestamp <= '%s'", $start_date, $end_date));
+		if($register_select) {
+			$check_sales = db_result(db_query("SELECT SUM(paid_amount) FROM pos_api_expose_check_log cl
+				INNER JOIN pos_api_expose_transaction_log tl ON tl.check_pid = cl.pid
+				WHERE post_dated = '0' AND cl.timestamp >= '%s' AND cl.timestamp <= '%s' ".$transaction_sql_inject, $start_date, $end_date));
 
-		$check_sales_post = db_result(db_query("SELECT SUM(paid_amount) FROM pos_api_expose_check_log cl WHERE post_dated = '1' AND cl.timestamp >= '%s' AND cl.timestamp <= '%s'", $start_date, $end_date));
-		
-		$cc_sales = db_result(db_query("SELECT SUM(amount_paid) FROM pos_api_expose_credit_card_log cc WHERE cc.timestamp >= '%s' AND cc.timestamp <= '%s'", $start_date, $end_date));
-		$mo_sales = db_result(db_query("SELECT SUM(paid_amount) FROM pos_api_expose_money_order_log mo WHERE mo.timestamp >= '%s' AND mo.timestamp <= '%s'", $start_date, $end_date));
-		$ar_sales = db_result(db_query("SELECT SUM(amount) FROM pos_api_expose_transaction_log tl WHERE credit_usage_id > 0 AND tl.timestamp >= '%s' AND tl.timestamp <= '%s'", $start_date, $end_date));
+			$check_sales_post = db_result(db_query("SELECT SUM(paid_amount) FROM pos_api_expose_check_log cl
+				INNER JOIN pos_api_expose_transaction_log tl ON tl.check_pid = cl.pid
+				WHERE post_dated = '1' AND cl.timestamp >= '%s' AND cl.timestamp <= '%s' ".$transaction_sql_inject, $start_date, $end_date));
+			
+			$cc_sales = db_result(db_query("SELECT SUM(amount_paid) FROM pos_api_expose_credit_card_log cc
+				INNER JOIN pos_api_expose_transaction_log tl ON tl.cc_pid = cc.pid
+				WHERE cc.timestamp >= '%s' AND cc.timestamp <= '%s' ".$transaction_sql_inject, $start_date, $end_date));
 
-		$rma_sales = db_result(db_query("SELECT (-1)*SUM(total_refund) FROM pos_api_expose_rma_refund_log rl WHERE rl.timestamp >= '%s' AND rl.timestamp <= '%s' AND total_refund < 0 AND rl.pid NOT IN (SELECT crl.rma_pid FROM user_term_credits_rma_log crl)", $start_date, $end_date));
+			$mo_sales = db_result(db_query("SELECT SUM(paid_amount) FROM pos_api_expose_money_order_log mo
+				INNER JOIN pos_api_expose_transaction_log tl ON tl.mo_pid = mo.pid
+				WHERE mo.timestamp >= '%s' AND mo.timestamp <= '%s' ".$transaction_sql_inject, $start_date, $end_date));
+
+			$ar_sales = db_result(db_query("SELECT SUM(amount) FROM pos_api_expose_transaction_log tl WHERE credit_usage_id > 0 AND tl.timestamp >= '%s' AND tl.timestamp <= '%s' ".$transaction_sql_inject, $start_date, $end_date));
+
+			$rma_sales = db_result(db_query("SELECT (-1)*SUM(total_refund) FROM pos_api_expose_rma_refund_log rl
+				INNER JOIN pos_api_expose_transaction_log tl ON tl.rma_pid = rl.pid
+				WHERE rl.timestamp >= '%s' AND rl.timestamp <= '%s' AND rl.total_refund < 0 AND rl.pid NOT IN (SELECT crl.rma_pid FROM user_term_credits_rma_log crl) ".$transaction_sql_inject, $start_date, $end_date));
+		} else {
+			$check_sales = db_result(db_query("SELECT SUM(paid_amount) FROM pos_api_expose_check_log cl WHERE post_dated = '0' AND cl.timestamp >= '%s' AND cl.timestamp <= '%s'", $start_date, $end_date));
+
+			$check_sales_post = db_result(db_query("SELECT SUM(paid_amount) FROM pos_api_expose_check_log cl WHERE post_dated = '1' AND cl.timestamp >= '%s' AND cl.timestamp <= '%s'", $start_date, $end_date));
+			
+			$cc_sales = db_result(db_query("SELECT SUM(amount_paid) FROM pos_api_expose_credit_card_log cc WHERE cc.timestamp >= '%s' AND cc.timestamp <= '%s'", $start_date, $end_date));
+			$mo_sales = db_result(db_query("SELECT SUM(paid_amount) FROM pos_api_expose_money_order_log mo WHERE mo.timestamp >= '%s' AND mo.timestamp <= '%s'", $start_date, $end_date));
+			$ar_sales = db_result(db_query("SELECT SUM(amount) FROM pos_api_expose_transaction_log tl WHERE credit_usage_id > 0 AND tl.timestamp >= '%s' AND tl.timestamp <= '%s'", $start_date, $end_date));
+
+			$rma_sales = db_result(db_query("SELECT (-1)*SUM(total_refund) FROM pos_api_expose_rma_refund_log rl WHERE rl.timestamp >= '%s' AND rl.timestamp <= '%s' AND total_refund < 0 AND rl.pid NOT IN (SELECT crl.rma_pid FROM user_term_credits_rma_log crl)", $start_date, $end_date));
+		}
 
 		$total_sales = bcadd($cash_sales, $check_sales, 6);
 		$total_sales = bcsub($total_sales, $cash_change, 6);
@@ -365,21 +399,23 @@ function _ggw_pos_report_daily() {
 		$header = array('Total Registers', '', '', '');
 		$rows = array();
 
-		$rma_returns = db_result(db_query("SELECT SUM(total_refund) FROM pos_api_expose_rma_refund_log rl WHERE rl.timestamp >= '%s' AND rl.timestamp <= '%s' AND total_refund > 0", $start_date, $end_date))+$rma_cash_out;
+		$rma_returns = db_result(db_query("SELECT SUM(rl.total_refund) FROM pos_api_expose_rma_refund_log rl
+			INNER JOIN pos_api_expose_transaction_log tl ON tl.rma_pid = rl.pid
+			WHERE rl.timestamp >= '%s' AND rl.timestamp <= '%s' AND rl.total_refund > 0 ".$transaction_sql_inject, $start_date, $end_date))+$rma_cash_out;
 
 		$product_cost = db_result(db_query("SELECT SUM(cost*qty) FROM uc_order_products uop
 		INNER JOIN uc_orders uo ON uop.order_id = uo.order_id
 		INNER JOIN pos_api_expose_transaction_log tl ON uo.order_id = tl.ticket_id
-		WHERE uo.order_status = 'pos_completed' AND tl.timestamp >= '%s' AND tl.timestamp <= '%s'", $start_date, $end_date));
+		WHERE uo.order_status = 'pos_completed' AND tl.timestamp >= '%s' AND tl.timestamp <= '%s' ".$transaction_sql_inject, $start_date, $end_date));
 
 		$total_invoice = db_result(db_query("SELECT SUM(uo.order_total) FROM uc_orders uo
 		 INNER JOIN pos_api_expose_transaction_log tl ON uo.order_id = tl.ticket_id
-		 WHERE uo.order_status = 'pos_completed' AND tl.timestamp >= '%s' AND tl.timestamp <= '%s'", $start_date, $end_date));
+		 WHERE uo.order_status = 'pos_completed' AND tl.timestamp >= '%s' AND tl.timestamp <= '%s' ".$transaction_sql_inject, $start_date, $end_date));
 
 		$sales_tax = db_result(db_query("SELECT SUM(li.amount) FROM uc_order_line_items li
 		INNER JOIN uc_orders uo ON li.order_id = uo.order_id
 		INNER JOIN pos_api_expose_transaction_log tl ON uo.order_id = tl.ticket_id
-		WHERE uo.order_status = 'pos_completed' AND li.type = 'tax' AND tl.timestamp >= '%s' AND tl.timestamp <= '%s'", $start_date, $end_date));
+		WHERE uo.order_status = 'pos_completed' AND li.type = 'tax' AND tl.timestamp >= '%s' AND tl.timestamp <= '%s' ".$transaction_sql_inject, $start_date, $end_date));
 
 		$discount = 0; //This is not manager overrides, but coupons and rma discounts.
 		$coupons = 0;
