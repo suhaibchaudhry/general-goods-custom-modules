@@ -191,11 +191,12 @@ function _ggw_pos_report_daily() {
 		$transac_log_table = 'pos_api_expose_transaction_log';
 	}
 
-	$transacs = db_query("SELECT tl.credit_usage_id, tl.cash_pid, tl.rma_pid, tl.cc_pid, tl.check_pid, tl.mo_pid, tl.amount, tl.pid, tl.cuid, tl.uid, tl.timestamp, tl.register_id, tl.ticket_id, cl.amount_paid AS cash_paid, cl.change AS change_made, cl.total AS cash_total, chl.paid_amount AS check_payment, chl.check_number, chl.post_dated AS check_post_dated, chl.cash_date AS check_cash_date, ccl.amount_paid AS cc_amount, mo.paid_amount AS mo_paid_amount, mo.reference AS mo_ref, ccl.transaction_id FROM {".$transac_log_table."} tl
+	$transacs = db_query("SELECT tl.credit_usage_id, tl.cash_pid, tl.rma_pid, tl.cc_pid, tl.check_pid, tl.mo_pid, tl.amount, tl.pid, tl.cuid, tl.uid, tl.timestamp, tl.register_id, tl.ticket_id, cl.amount_paid AS cash_paid, cl.change AS change_made, cl.total AS cash_total, chl.paid_amount AS check_payment, chl.check_number, chl.post_dated AS check_post_dated, chl.cash_date AS check_cash_date, ccl.amount_paid AS cc_amount, mo.paid_amount AS mo_paid_amount, mo.reference AS mo_ref, cu.credit_amount AS ar_payment_amount, ccl.transaction_id FROM {".$transac_log_table."} tl
 	LEFT JOIN {".$cash_log_table."} cl ON tl.cash_pid = cl.pid
 	LEFT JOIN {".$cc_log_table."} ccl ON tl.cc_pid = ccl.pid
 	LEFT JOIN {".$check_log_table."} chl ON tl.check_pid = chl.pid
 	LEFT JOIN {".$mo_log_table."} mo ON tl.mo_pid = mo.pid
+	LEFT JOIN {user_term_credits_usages} cu ON tl.credit_usage_id = cu.cuid
 	WHERE tl.timestamp >= '%s' AND tl.timestamp <= '%s' ".$transaction_sql_inject, $start_date, $end_date);
 
 	$header = array('Date', 'Register', 'Invoice', 'Customer', 'Total', 'Payby', 'Payment', 'Transaction Type', 'Ticket #', 'Employee');
@@ -257,7 +258,7 @@ function _ggw_pos_report_daily() {
 
 		if($transac->credit_usage_id) {
 			$payby .= 'AR'.'<br />';
-			$payment .= '<br />';
+			$payment .= uc_currency_format(user_term_credits_recursive_round($transac->ar_payment_amount), false);
 		}
 
 		$ticket_type = 'SALE';
@@ -324,7 +325,9 @@ function _ggw_pos_report_daily() {
 				INNER JOIN pos_api_expose_transaction_log tl ON tl.mo_pid = mo.pid
 				WHERE mo.timestamp >= '%s' AND mo.timestamp <= '%s' ".$transaction_sql_inject, $start_date, $end_date));
 
-			$ar_sales = db_result(db_query("SELECT SUM(amount) FROM pos_api_expose_transaction_log tl WHERE credit_usage_id > 0 AND tl.timestamp >= '%s' AND tl.timestamp <= '%s' ".$transaction_sql_inject, $start_date, $end_date));
+			$ar_sales = db_result(db_query("SELECT SUM(cu.credit_amount) FROM pos_api_expose_transaction_log tl
+				INNER JOIN {user_term_credits_usages} cu ON cu.cuid = tl.credit_usage_id
+				WHERE credit_usage_id > 0 AND tl.timestamp >= '%s' AND tl.timestamp <= '%s' ".$transaction_sql_inject, $start_date, $end_date));
 
 			$rma_sales = db_result(db_query("SELECT (-1)*SUM(total_refund) FROM pos_api_expose_rma_refund_log rl
 				INNER JOIN pos_api_expose_transaction_log tl ON tl.rma_pid = rl.pid
@@ -336,7 +339,9 @@ function _ggw_pos_report_daily() {
 			
 			$cc_sales = db_result(db_query("SELECT SUM(amount_paid) FROM pos_api_expose_credit_card_log cc WHERE cc.timestamp >= '%s' AND cc.timestamp <= '%s'", $start_date, $end_date));
 			$mo_sales = db_result(db_query("SELECT SUM(paid_amount) FROM pos_api_expose_money_order_log mo WHERE mo.timestamp >= '%s' AND mo.timestamp <= '%s'", $start_date, $end_date));
-			$ar_sales = db_result(db_query("SELECT SUM(amount) FROM pos_api_expose_transaction_log tl WHERE credit_usage_id > 0 AND tl.timestamp >= '%s' AND tl.timestamp <= '%s'", $start_date, $end_date));
+			$ar_sales = db_result(db_query("SELECT SUM(cu.credit_amount) FROM pos_api_expose_transaction_log tl
+				INNER JOIN {user_term_credits_usages} cu ON cu.cuid = tl.credit_usage_id
+				WHERE credit_usage_id > 0 AND tl.timestamp >= '%s' AND tl.timestamp <= '%s'", $start_date, $end_date));
 
 			$rma_sales = db_result(db_query("SELECT (-1)*SUM(total_refund) FROM pos_api_expose_rma_refund_log rl WHERE rl.timestamp >= '%s' AND rl.timestamp <= '%s' AND total_refund < 0 AND rl.pid NOT IN (SELECT crl.rma_pid FROM user_term_credits_rma_log crl)", $start_date, $end_date));
 		}
