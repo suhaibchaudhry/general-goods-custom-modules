@@ -394,7 +394,14 @@ function utc_generate_credits_table($uid = 0, $settlement_links = true, $limit =
 		}
 	}
 
-	return theme('table', $header, $rows, array('class' => 'user-term-credits-table')).theme('pager', NULL, $limit);
+	$content = theme('table', $header, $rows, array('class' => 'user-term-credits-table')).theme('pager', NULL, $limit);
+
+	$content .= '<div class="legend">';
+	$content .= '<div class="legend-item"><div class="legend-box settled-true"></div><div class="legend-content">Paid Off</div></div>';
+	$content .= '<div class="legend-item"><div class="legend-box settled-false"></div><div class="legend-content">Payment Due</div></div>';
+	$content .= '<div class="legend-item"><div class="legend-box settled-exceeded"></div><div class="legend-content">Past Due</div></div>';
+	$content .= '</div>';
+	return $content;
 }
 
 function utc_generate_settlements_table($cuid = 0, $uid) {
