@@ -1,17 +1,25 @@
 table tr.settled-false, div.settled-false {
 	background: #FAAFAF;	
 }
-
-.legend-box {
-	width: 40px;
-	height: 40px;
+.legend {
+	margin: 20px 0 0;
+}
+.legend-item {
+	margin-right: 22px;
+	display: inline-block;
+}
+.legend-item .legend-box {
+	width: 30px;
+	height: 30px;
 	display: inline-block;
 	vertical-align: middle;
+	margin: 0 8px 0 0;
 }
 
-.legend-content {
+.legend-item .legend-content {
 	display: inline-block;
 	vertical-align: middle;
+	font-weight: bold;
 }
 
 table tr.settled-true, div.settled-true {
