@@ -39,7 +39,21 @@ function user_term_credits_menu() {
     'type' => MENU_LOCAL_TASK
   );
 
+  $items['user/%user/term-credits/payment-history'] = array(
+    'title' => 'Payment History',
+    'description' => 'Display customer payment history.',
+    'page callback' => 'utc_payment_history',
+    'page arguments' => array(1),
+    'access arguments' => array('administer user term credits'),
+    'type' => MENU_LOCAL_TASK
+  );
+
   return $items;
+}
+
+function utc_payment_history($user) {
+	dpm($user);
+	return 'Payment History';
 }
 
 function utc_perform_settlement($user, $cuid) {
