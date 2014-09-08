@@ -19,7 +19,43 @@ function ggw_product_edit_menu() {
 			'access arguments' => array('view all orders')
 		);
 
-	return $items;
+		$items['admin/open-tickets-log'] = array(
+			'title' => 'Open Tickets Log',
+			'type' => MENU_CALLBACK,
+			'description' => 'Display a log of open tickets.',
+			'page callback' => 'ggw_open_tickets_log',
+			'access arguments' => array('view all orders')
+		);
+
+		return $items;
+}
+
+function ggw_open_tickets_log() {
+	$tickets = db_query("
+	SELECT DISTINCT tl.ticket_id, u.uid AS euid, u.name, uc.uid, ucc.name AS cname, uc.created FROM pos_api_expose_ticket_log tl
+	INNER JOIN uc_orders uc ON tl.ticket_id = uc.order_id
+	INNER JOIN users u ON tl.uid = u.uid
+	LEFT JOIN users ucc ON uc.uid = ucc.uid 
+	WHERE uc.order_status = 'pos_in_progress'");
+
+	$header = array('Ticket ID', 'Employee', 'Customer', 'Date Created');
+	$rows = array();
+	while($row = db_fetch_object($tickets)) {
+		if($row->uid) {
+			$customer = l($row->cname, 'user/'.$row->uid);
+		} else {
+			$customer = 'Walk-in Customer';
+		}
+
+		$rows[] = array(
+			$row->ticket_id,
+			l($row->name, 'user/'.$row->euid),
+			$customer,
+			date("j/m/Y h:ia", $row->created)
+		);
+	}
+
+	return theme('table', $header, $rows);
 }
 
 function ggw_inconsitent_tickets() {
