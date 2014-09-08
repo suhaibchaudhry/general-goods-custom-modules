@@ -32,11 +32,12 @@ function ggw_product_edit_menu() {
 
 function ggw_open_tickets_log() {
 	$tickets = db_query("
-	SELECT DISTINCT tl.ticket_id, u.uid AS euid, u.name, uc.uid, ucc.name AS cname, uc.created FROM pos_api_expose_ticket_log tl
+	SELECT tl.ticket_id, u.uid AS euid, u.name, uc.uid, ucc.name AS cname, uc.created, tl.`timestamp` FROM pos_api_expose_ticket_log tl
 	INNER JOIN uc_orders uc ON tl.ticket_id = uc.order_id
 	INNER JOIN users u ON tl.uid = u.uid
-	LEFT JOIN users ucc ON uc.uid = ucc.uid 
-	WHERE uc.order_status = 'pos_in_progress'");
+	LEFT JOIN users ucc ON uc.uid = ucc.uid
+	WHERE uc.order_status = 'pos_in_progress' AND (ABS(tl.`timestamp`- uc.created) >= 0) AND (ABS(tl.`timestamp` - uc.created) <= 5)
+	ORDER BY tl.ticket_id DESC");
 
 	$header = array('Ticket ID', 'Employee', 'Customer', 'Date Created');
 	$rows = array();
@@ -48,7 +49,7 @@ function ggw_open_tickets_log() {
 		}
 
 		$rows[] = array(
-			$row->ticket_id,
+			l($row->ticket_id, 'admin/store/orders/'.$row->ticket_id),
 			l($row->name, 'user/'.$row->euid),
 			$customer,
 			date("j/m/Y h:ia", $row->created)
