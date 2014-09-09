@@ -26,9 +26,10 @@ function ggw_views_alters_theme($existing, $type, $theme, $path) {
 
 function theme_ggw_customer_list_table($view, $options, $rows, $title) {
 	$data = array();
-	$header = array('Account #', 'Company Name', 'Company Phone', 'Balance', 'Last Order Date', 'Options');
+	$header = array('Account #', 'Company Name', 'Company Phone', 'Balance', 'Last Order Date', 'Options', 'Active');
+	$stasuses = array('No', 'Yes');
 	foreach($rows as $index => $row) {
-		$data[$index] = array($row->users_name, $row->node_title, $row->node_data_field_profile_company_phone_field_profile_company_phone_number, $row->balance,  $row->last_order, l('Generate Shelf Stickers', 'admin/store/qr-codes/'.$row->users_uid, array('attributes' => array('target' => '_blank'))));
+		$data[$index] = array($row->users_name, $row->node_title, $row->node_data_field_profile_company_phone_field_profile_company_phone_number, $row->balance,  $row->last_order, l('Generate Shelf Stickers', 'admin/store/qr-codes/'.$row->users_uid, array('attributes' => array('target' => '_blank'))), $stasuses[$row->users_status]);
 	}
 
 	return theme('table', $header, $data);
