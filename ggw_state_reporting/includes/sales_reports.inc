@@ -46,7 +46,7 @@ function _ggw_pos_report_daily() {
 								WHERE s.settlement_date >= '%s' AND s.settlement_date <= '%s' ".$settlement_sql_inject, $start_date, $end_date));
 
 		$transacs_count = 0;
-		$stashed_rma_change = 0;
+		$stashed_rma_change = '0';
 
 		$header = array('Date', 'Register', 'Customer', 'Payment', 'Payby', 'Amount', 'Employee');
 		$payment_types = array(
@@ -113,7 +113,7 @@ function _ggw_pos_report_daily() {
 					$stash = db_fetch_object(db_query("SELECT `change`, stashed FROM user_term_credits_cash_log WHERE sid = '%d'", $settlement->sid));
 					if($stash->stashed) {	
 						if($components[0] == 'CHANGE') {
-							$stashed_rma_change += $stash->change;
+							$stashed_rma_change = bcadd($stash->change, $stashed_rma_change, 6);
 							$column_1 .= 'RMA SENT ';
 						}
 					}
