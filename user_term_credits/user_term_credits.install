@@ -205,6 +205,13 @@ function user_term_credits_schema() {
 		        'scale' => 5,
 		        'not null' => TRUE,
 		        'default' => 0.0,
+			),
+			'stashed' => array(
+				'description' => 'Whether change is stashed to rma.',
+        		'type' => 'int',
+        		'not null' => TRUE,
+        		'default' => 0,
+				'size' => 'tiny'
 			)
 		),
 		'primary key' => array('pid'),
@@ -424,6 +431,21 @@ function user_term_credits_update_6015() {
 function user_term_credits_update_6016() {
 	$new_tables = array('user_term_credits_rma_log');
 	_user_term_credits_create_new_tables($new_tables);
+}
+
+function user_term_credits_update_6017() {
+	$ret = array();
+	$table = 'user_term_credits_cash_log';
+	$field_name = 'stashed';
+	$field = array(
+				'description' => 'Whether change is stashed to rma.',
+        		'type' => 'int',
+        		'not null' => TRUE,
+        		'default' => 0,
+				'size' => 'tiny'
+			);
+
+	db_add_field($ret, $table, $field_name, $field, array());
 }
 
 function _user_term_credits_create_new_tables($new_tables) {
