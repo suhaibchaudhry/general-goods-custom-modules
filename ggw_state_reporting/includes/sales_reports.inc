@@ -46,6 +46,7 @@ function _ggw_pos_report_daily() {
 								WHERE s.settlement_date >= '%s' AND s.settlement_date <= '%s' ".$settlement_sql_inject, $start_date, $end_date));
 
 		$transacs_count = 0;
+		$stashed_rma_change = 0;
 
 		$header = array('Date', 'Register', 'Customer', 'Payment', 'Payby', 'Amount', 'Employee');
 		$payment_types = array(
@@ -109,6 +110,14 @@ function _ggw_pos_report_daily() {
 			foreach($pay_items as $pay_item) {
 				$components = split("\|", $pay_item);
 				if($components[0] == 'CASH' || $components[0] == 'CHANGE') {
+					$stash = db_fetch_object(db_query("SELECT `change`, stashed FROM user_term_credits_cash_log WHERE sid = '%d'", $settlement->sid));
+					if($stash->stashed) {	
+						if($components[0] == 'CHANGE') {
+							$stashed_rma_change += $stash->change;
+							$column_1 .= 'RMA SENT ';
+						}
+					}
+
 					$column_1 .= $components[0];
 					$column_2 .= uc_currency_format(user_term_credits_recursive_round($components[1]), false);
 					$column_1 .= '<br />';
@@ -491,6 +500,8 @@ function _ggw_pos_report_daily() {
 		$cash_sales += (($settlement_close['CASH']-$settlement_close['CHANGE'])/100);
 		$cash_sales -= $cash_change;
 		$cash_sales -= $rma_cash_out;
+		$cash_sales += $stashed_rma_change;
+
 		$rows[] = array(
 			'Cash',
 			uc_currency_format($cash_sales, false)
