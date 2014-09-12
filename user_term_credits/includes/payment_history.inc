@@ -51,7 +51,11 @@ function user_term_credits_date_range_form() {
 	return $form;
 }
 
-function utc_payment_history($user) {
+function utc_payment_history_pos($user) {
+	utc_payment_history($user, true);
+}
+
+function utc_payment_history($user, $themeless = false) {
 	drupal_add_css(drupal_get_path('module', 'ggw_state_reporting').'/css/sales_report_form.css');
 
 	$profile = content_profile_load('profile', $user->uid);
@@ -232,5 +236,9 @@ function utc_payment_history($user) {
 
 	$content .= theme('table', $header, $rows, array('class' => 'payment-history-table'));
 
-	return $content;
+	if($themeless) {
+		print $content;
+	} else {
+		return $content;
+	}
 }

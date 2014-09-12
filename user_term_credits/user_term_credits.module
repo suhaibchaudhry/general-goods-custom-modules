@@ -49,6 +49,16 @@ function user_term_credits_menu() {
     'file' => 'includes/payment_history.inc'
   );
 
+  $items['user/%user/term-credits/payment-history/pos'] = array(
+    'title' => 'Payment History',
+    'description' => 'Display customer payment history.',
+    'page callback' => 'utc_payment_history_pos',
+    'page arguments' => array(1),
+    'access arguments' => array('administer user term credits'),
+    'type' => MENU_CALLBACK,
+    'file' => 'includes/payment_history.inc'
+  );
+
   return $items;
 }
 
