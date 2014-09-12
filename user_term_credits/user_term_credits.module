@@ -54,7 +54,7 @@ function user_term_credits_menu() {
     'description' => 'Display customer payment history.',
     'page callback' => 'utc_payment_history_pos',
     'page arguments' => array(1),
-    'access arguments' => array('administer user term credits'),
+    'access arguments' => array('access content'),
     'type' => MENU_CALLBACK,
     'file' => 'includes/payment_history.inc'
   );
@@ -566,6 +566,15 @@ function user_term_credits_preprocess_node(&$variables) {
       drupal_goto("user/".$node->uid);
     }
   }
+}
+
+function user_term_credits_theme() {
+  return array(
+    'payment_history_report' => array(
+      'template' => 'templates/payment-history-report',
+      'arguments' => array('content' => null, 'uid' => null)
+    )
+  );
 }
 
 /*UBER POS*/

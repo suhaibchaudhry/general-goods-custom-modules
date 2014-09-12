@@ -45,7 +45,7 @@ function user_term_credits_date_range_form() {
 
 	$form['reset_button'] = array(
 	    '#type' => 'markup',
-	    '#value' => l('Reset to last 180 days', $_GET['q'])
+	    '#value' => l('Reset to last 180 days', $_GET['q'], array('attributes' => array('class' => 'reset-button')))
 	);
 
 	return $form;
@@ -237,7 +237,7 @@ function utc_payment_history($user, $themeless = false) {
 	$content .= theme('table', $header, $rows, array('class' => 'payment-history-table'));
 
 	if($themeless) {
-		print $content;
+		print theme('payment_history_report', $content, $user->uid);
 	} else {
 		return $content;
 	}
