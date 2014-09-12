@@ -71,8 +71,10 @@ function utc_payment_history($user, $themeless = false) {
 
 	$profile = content_profile_load('profile', $user->uid);
 
-	$header = '<pre>Payment History: '.$profile->title."\t\tAccount: ".$user->name."</pre>";
-	$header .= "<pre>This report lists last 180 days' A/R payments by default. (not over-the-counter payments)</pre>";
+	if(!$themeless) {
+		$header = '<pre>Payment History: '.$profile->title."\t\tAccount: ".$user->name."</pre>";
+		$header .= "<pre>This report lists last 180 days' A/R payments by default. (not over-the-counter payments)</pre>";
+	}
 	$content = $header."\n";
 	$content .= drupal_get_form('user_term_credits_date_range_form');
 
