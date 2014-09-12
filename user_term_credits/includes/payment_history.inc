@@ -52,7 +52,18 @@ function user_term_credits_date_range_form() {
 }
 
 function utc_payment_history_pos($user) {
-	utc_payment_history($user, true);
+	//Avoid Caching Invoice
+	header('Cache-Control: no-cache, no-store, must-revalidate'); // HTTP 1.1.
+	header('Pragma: no-cache'); // HTTP 1.0.
+	header('Expires: 0'); // Proxies.
+
+	$token = $_GET['token'];
+	$uid = _pos_api_expose_uid_from_token($token);
+	if($uid) {
+		utc_payment_history($user, true);
+	} else {
+		print "Access denied to reciept.";
+	}
 }
 
 function utc_payment_history($user, $themeless = false) {
