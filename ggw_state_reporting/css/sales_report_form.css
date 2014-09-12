@@ -1,3 +1,9 @@
 .report-controls {
 	margin: 10px 0;
 }
+table.payment-history-table {
+	margin: 30px 0 0;
+}
+table.payment-history-table tr:hover {
+	background: #E7FFF6;
+}
