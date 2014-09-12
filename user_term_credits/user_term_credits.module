@@ -124,7 +124,163 @@ function utc_payment_history($user) {
 		$end_date = mktime(22, 0, 0);
 	}
 
-	
+	$settlements_sql = "SELECT s.sid, u.uid, SUM(s.settlement_amount) AS settlement_amount, GROUP_CONCAT(u.order_id SEPARATOR ',') AS invoice_ids, GROUP_CONCAT(s.settlement_date-u.consumption_date SEPARATOR ',') AS days, GROUP_CONCAT(s.cuid SEPARATOR ',') AS cuids, s.payment_type, s.remarks, s.settlement_date FROM user_term_credits_settlements s LEFT JOIN user_term_credits_usages u ON s.cuid = u.cuid WHERE s.settlement_date >= '%s' AND s.settlement_date <= '%s' AND u.uid = '%d' GROUP BY u.uid, s.settlement_date ORDER BY s.settlement_date DESC";
+
+	$settlements = db_query($settlements_sql, $date, $end_date, $user->uid);
+	$header = array('Payment Date', 'Payment', 'Invoice #', 'Invoice Amnt.', 'Days', 'Remaining Bal.', 'Payby', 'Amount');
+	$payment_types = array(
+		'pos_payment' => 'Register Payment',
+		'cash' => 'Cash - B.O.',
+		'check' => 'Check - B.O.',
+		'money_order' => 'M.O. - B.O.',
+		'post_check' => 'Post Dated Check - B.O.'
+	);
+
+	$rows = array();
+	$settlement_close = array();
+	while($settlement = db_fetch_object($settlements)) {
+		$transacs_count++;
+		if($settlement->payment_type == 'pos_payment') {
+			$settlement_components = explode("\n", $settlement->remarks);
+			foreach($settlement_components as $settlement_component) {
+				$component = split('\|', $settlement_component);
+				if(!empty($component[0])) {
+					if(!array_key_exists($component[0], $settlement_close)) {
+						$settlement_close[$component[0]] = 0;
+					}
+					$settlement_close[$component[0]] += (int)(((double)$component[1])*100);
+				}
+			}
+		} else if($settlement->payment_type == 'cash') {
+			$component = 'CASH';
+			if(!array_key_exists($component, $settlement_close)) {
+				$settlement_close[$component] = 0;
+			}
+			$settlement_close[$component] += (int)(((double)$settlement->settlement_amount)*100);
+		} else if($settlement->payment_type == 'check') {
+			$component = 'CHECK';
+			if(!array_key_exists($component, $settlement_close)) {
+				$settlement_close[$component] = 0;
+			}
+			$settlement_close[$component] += (int)(((double)$settlement->settlement_amount)*100);
+		} else if($settlement->payment_type == 'money_order') {
+			$component = 'MO';
+			if(!array_key_exists($component, $settlement_close)) {
+				$settlement_close[$component] = 0;
+			}
+			$settlement_close[$component] += (int)(((double)$settlement->settlement_amount)*100);
+		} else if($settlement->payment_type == 'post_check') {
+			$component = 'PCHECK';
+			if(!array_key_exists($component, $settlement_close)) {
+				$settlement_close[$component] = 0;
+			}
+			$settlement_close[$component] += (int)(((double)$settlement->settlement_amount)*100);
+		}
+
+		$column_1 = '';
+		$column_2 = '';
+		$pay_items = split("\n", $settlement->remarks);
+
+		$payment_types_cr = array(
+			'MO' => 'MONEY ORDER',
+			'CC' => 'CREDIT CARD',
+			'PCHECK' => 'POST DATED CHECK'
+		);
+
+		foreach($pay_items as $pay_item) {
+			$components = split("\|", $pay_item);
+			if($components[0] == 'CASH' || $components[0] == 'CHANGE') {
+				$stash = db_fetch_object(db_query("SELECT `change`, stashed FROM user_term_credits_cash_log WHERE sid = '%d'", $settlement->sid));
+				if($stash->stashed) {	
+					if($components[0] == 'CHANGE') {
+						$stashed_rma_change = bcadd($stash->change, $stashed_rma_change, 6);
+						$column_1 .= 'RMA SENT ';
+					}
+				}
+
+				$column_1 .= $components[0];
+				$column_2 .= uc_currency_format(user_term_credits_recursive_round($components[1]), false);
+				$column_1 .= '<br />';
+				$column_2 .= '<br />';
+			}
+		}
+
+		$i = 0;
+		foreach($pay_items as $pay_item) {
+			$components = split("\|", $pay_item);
+			if($components[0] != 'CASH' && $components[0] != 'CHANGE' && $components[1] > 0) {
+				if($payment_types_cr[$components[0]]) {
+					$column_1 .= $payment_types_cr[$components[0]];
+				} else {
+					$column_1 .= $components[0];
+				}
+				if($components[0] == 'CHECK' || $components[0] == 'PCHECK') {
+					$check_info = db_fetch_object(db_query("SELECT check_number, cash_date, post_dated FROM user_term_credits_check_log WHERE sid = '%d'", $settlement->sid));
+					if($check_info->check_number) {
+						$column_1 .= ' - '.$check_info->check_number;
+					}
+					if($check_info->post_dated) {
+						if($check_info->cash_date) {
+							$column_1 .= ' - '.$check_info->cash_date;
+						}
+					}
+				}
+				if($components[0] == 'CC') {
+					$transaction_id = db_result(db_query("SELECT transaction_id FROM user_term_credits_credit_card_log WHERE sid = '%d'", $settlement->sid));
+					if($transaction_id) {
+						$column_1 .= ' - '.$transaction_id;
+					}
+				}
+				if($components[0] == 'MO') {
+					$mo_payment = db_result(db_query("SELECT reference FROM user_term_credits_money_order_log WHERE sid = '%d'", $settlement->sid));
+					if($mo_payment) {
+						$column_1 .= ' - '.$mo_payment;
+					}
+				}
+				$column_2 .= uc_currency_format(user_term_credits_recursive_round($components[1]), false);
+				if($i != count($pay_items)-1) {
+					$column_1 .= '<br />';
+					$column_2 .= '<br />';
+				}
+			}
+			$i++;
+		}
+
+		$invoice_links = explode(',', $settlement->invoice_ids);
+		$invoices = '';
+		foreach($invoice_links as $link) {
+			$invoices .= l($link, 'admin/store/orders/'.$link).'<br />';
+		}
+
+		$settlement_days = explode(',', $settlement->days);
+		$days = '';
+		foreach($settlement_days as $day) {
+			$days .= floor(($day)/86430).'<br />';
+		}
+
+		$cuids = explode(',', $settlement->cuids);
+		$remaining = '';
+		$invoiced = '';
+		foreach($cuids as $cuid) {
+			$remaining .= uc_currency_format(user_term_credits_recursive_round(db_result(db_query("SELECT (cu.credit_amount-IFNULL(pre.paid, 0)) AS balance FROM user_term_credits_usages cu
+	                  LEFT JOIN (SELECT cuid, SUM(settlement_amount) AS paid FROM user_term_credits_settlements GROUP BY cuid) pre ON cu.cuid = pre.cuid
+					  WHERE cu.cuid = '%d'", $cuid)))).'<br />';
+			$invoiced .= uc_currency_format(user_term_credits_recursive_round(db_result(db_query("SELECT credit_amount FROM user_term_credits_usages WHERE cuid = '%s'", $cuid)))).'<br />';
+		}
+
+		$rows[] = array(
+			date('n/j/Y', $settlement->settlement_date),
+			uc_currency_format(user_term_credits_recursive_round($settlement->settlement_amount), false),
+			$invoices,
+			$invoiced,
+			$days,
+			$remaining,
+			$column_1,
+			$column_2
+		);
+	}
+
+	$content .= theme('table', $header, $rows);
 
 	return $content;
 }
