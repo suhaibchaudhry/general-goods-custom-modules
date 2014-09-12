@@ -51,9 +51,82 @@ function user_term_credits_menu() {
   return $items;
 }
 
+function user_term_credits_date_range_form() {
+	$form = array();
+	if($_GET['start_date']) {
+		$date = $_GET['start_date']['date'].' '.$_GET['start_date']['time'];
+	} else {
+		$timestamp = time()-15552000;
+		$date = date( "Y-m-d H:i", mktime(7, 0, 0, date("n", $timestamp), date("j", $timestamp), date("Y", $timestamp)));
+	}
+
+	if($_GET['end_date']) {
+		$end_date = $_GET['end_date']['date'].' '.$_GET['end_date']['time'];
+	} else {
+		$end_date = date( "Y-m-d H:i", mktime(22, 0, 0));
+	}
+
+	$format = 'Y-m-d H:i';
+
+	$form['start_date'] = array(
+		'#type' => 'date_popup', // types 'date_text' and 'date_timezone' are also supported. See .inc file.
+		'#title' => t('Start Date'),
+		'#default_value' => $date,
+		'#date_format' => $format,
+		'#date_label_position' => 'within', // See other available attributes and what they do in date_api_elements.inc
+		'#date_timezone' => 'America/Chicago', // Optional, if your date has a timezone other than the site timezone.
+		'#date_year_range' => '-3:+3' // Optional, used to set the year range (back 3 years and forward 3 years is the default).
+	);
+
+	$form['end_date'] = array(
+		'#type' => 'date_popup', // types 'date_text' and 'date_timezone' are also supported. See .inc file.
+		'#title' => t('End Date'),
+		'#default_value' => $end_date,
+		'#date_format' => $format,
+		'#date_label_position' => 'within', // See other available attributes and what they do in date_api_elements.inc
+		'#date_timezone' => 'America/Chicago', // Optional, if your date has a timezone other than the site timezone.
+		'#date_year_range' => '-3:+3' // Optional, used to set the year range (back 3 years and forward 3 years is the default).
+	);
+
+	$form['#method'] = 'get';
+
+	$form['apply'] = array(
+		'#type' => 'submit',
+		'#value' => 'Apply'
+	);
+
+	$form['reset_button'] = array(
+	    '#type' => 'markup',
+	    '#value' => l('Reset to last 180 days', $_GET['q'])
+	);
+
+	return $form;
+}
+
 function utc_payment_history($user) {
-	dpm($user);
-	return 'Payment History';
+	$profile = content_profile_load('profile', $user->uid);
+
+	$header = '<pre>Payment History: '.$profile->title."\t\tAccount: ".$user->name."</pre>";
+	$header .= "<pre>This report lists last 180 days' A/R payments by default. (not over-the-counter payments)</pre>";
+	$content = $header."\n";
+	$content .= drupal_get_form('user_term_credits_date_range_form');
+
+	if($_GET['start_date']) {
+		$date = strtotime($_GET['start_date']['date'].' '.$_GET['start_date']['time']);
+	} else {
+		$timestamp = time()-15552000;
+		$date = mktime(7, 0, 0, date("n", $timestamp), date("j", $timestamp), date("Y", $timestamp));
+	}
+
+	if($_GET['end_date']) {
+		$end_date = strtotime($_GET['end_date']['date'].' '.$_GET['end_date']['time']);
+	} else {
+		$end_date = mktime(22, 0, 0);
+	}
+
+	
+
+	return $content;
 }
 
 function utc_perform_settlement($user, $cuid) {
