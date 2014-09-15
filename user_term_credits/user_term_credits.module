@@ -425,8 +425,8 @@ function _user_term_credits_getCredits($uid, $history_before = false) {
 	$sign = variable_get('uc_currency_sign', '$');
 
 	if($history_before) {
-		$query = "SELECT SUM(utcu.credit_amount) FROM {user_term_credits_usages} utcu WHERE utcu.uid = %d AND utcu.settled = 0 AND utcu.consumption_date < '%s'";
-		$pquery = "SELECT SUM(utcs.settlement_amount) FROM {user_term_credits_settlements} utcs INNER JOIN {user_term_credits_usages} utcu ON utcu.cuid = utcs.cuid WHERE utcu.uid = %d AND utcu.settled = 0 AND utcs.settlement_date < '%s'";
+		$query = "SELECT SUM(utcu.credit_amount) FROM {user_term_credits_usages} utcu WHERE utcu.uid = %d AND utcu.consumption_date < '%s'";
+		$pquery = "SELECT SUM(utcs.settlement_amount) FROM {user_term_credits_settlements} utcs INNER JOIN {user_term_credits_usages} utcu ON utcu.cuid = utcs.cuid WHERE utcu.uid = %d AND utcs.settlement_date < '%s'";
 
 		$outstanding_payments = db_result(db_query($query, $uid, $history_before));
 		$partial_payments = db_result(db_query($pquery, $uid, $history_before));
