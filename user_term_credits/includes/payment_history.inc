@@ -192,45 +192,8 @@ function utc_payment_history($user, $themeless = false) {
 	);
 
 	$rows = array();
-	$settlement_close = array();
 	while($settlement = db_fetch_object($settlements)) {
 		$transacs_count++;
-		if($settlement->payment_type == 'pos_payment') {
-			$settlement_components = explode("\n", $settlement->remarks);
-			foreach($settlement_components as $settlement_component) {
-				$component = split('\|', $settlement_component);
-				if(!empty($component[0])) {
-					if(!array_key_exists($component[0], $settlement_close)) {
-						$settlement_close[$component[0]] = 0;
-					}
-					$settlement_close[$component[0]] += (int)(((double)$component[1])*100);
-				}
-			}
-		} else if($settlement->payment_type == 'cash') {
-			$component = 'CASH';
-			if(!array_key_exists($component, $settlement_close)) {
-				$settlement_close[$component] = 0;
-			}
-			$settlement_close[$component] += (int)(((double)$settlement->settlement_amount)*100);
-		} else if($settlement->payment_type == 'check') {
-			$component = 'CHECK';
-			if(!array_key_exists($component, $settlement_close)) {
-				$settlement_close[$component] = 0;
-			}
-			$settlement_close[$component] += (int)(((double)$settlement->settlement_amount)*100);
-		} else if($settlement->payment_type == 'money_order') {
-			$component = 'MO';
-			if(!array_key_exists($component, $settlement_close)) {
-				$settlement_close[$component] = 0;
-			}
-			$settlement_close[$component] += (int)(((double)$settlement->settlement_amount)*100);
-		} else if($settlement->payment_type == 'post_check') {
-			$component = 'PCHECK';
-			if(!array_key_exists($component, $settlement_close)) {
-				$settlement_close[$component] = 0;
-			}
-			$settlement_close[$component] += (int)(((double)$settlement->settlement_amount)*100);
-		}
 
 		$column_1 = '';
 		$column_2 = '';
@@ -387,7 +350,7 @@ function utc_customer_statement($user, $themeless = false) {
 
 	$settlements_sql = "SELECT s.sid, u.uid, SUM(s.settlement_amount) AS settlement_amount, GROUP_CONCAT(u.order_id SEPARATOR ',') AS invoice_ids, GROUP_CONCAT(s.settlement_date-u.consumption_date SEPARATOR ',') AS days, GROUP_CONCAT(s.cuid SEPARATOR ',') AS cuids, s.payment_type, s.remarks, s.settlement_date FROM user_term_credits_settlements s LEFT JOIN user_term_credits_usages u ON s.cuid = u.cuid WHERE s.settlement_date >= '%s' AND s.settlement_date <= '%s' AND u.uid = '%d' GROUP BY u.uid, s.settlement_date ORDER BY s.settlement_date DESC";
 
-	
+
 
 	$content .= '<pre>'.str_pad('Ending Balance', 70, '. ').$end_credits->pending_payments_view.'</pre>';
 
