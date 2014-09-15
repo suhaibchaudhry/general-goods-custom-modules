@@ -75,7 +75,7 @@ function user_term_credits_menu() {
     'description' => 'Display customer invoice history.',
     'page callback' => 'utc_invoice_history_pos',
     'page arguments' => array(1),
-    'access arguments' => array('administer user term credits'),
+    'access arguments' => array('access content'),
     'type' => MENU_LOCAL_TASK,
     'file' => 'includes/payment_history.inc'
   );
@@ -86,6 +86,16 @@ function user_term_credits_menu() {
     'page callback' => 'utc_customer_statement',
     'page arguments' => array(1),
     'access arguments' => array('administer user term credits'),
+    'type' => MENU_LOCAL_TASK,
+    'file' => 'includes/payment_history.inc'
+  );
+
+  $items['user/%user/term-credits/customer-statement/pos'] = array(
+    'title' => 'Customer Statement',
+    'description' => 'Display customer statement.',
+    'page callback' => 'utc_customer_statement_pos',
+    'page arguments' => array(1),
+    'access arguments' => array('access content'),
     'type' => MENU_LOCAL_TASK,
     'file' => 'includes/payment_history.inc'
   );

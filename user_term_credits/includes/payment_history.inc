@@ -139,6 +139,21 @@ function utc_invoice_history_pos($user) {
 	}
 }
 
+function utc_customer_statement_pos($user) {
+	//Avoid Caching Invoice
+	header('Cache-Control: no-cache, no-store, must-revalidate'); // HTTP 1.1.
+	header('Pragma: no-cache'); // HTTP 1.0.
+	header('Expires: 0'); // Proxies.
+
+	$token = $_GET['token'];
+	$uid = _pos_api_expose_uid_from_token($token);
+	if($uid) {
+		utc_customer_statement($user, true);
+	} else {
+		print "Access denied to reciept.";
+	}
+}
+
 function utc_payment_history($user, $themeless = false) {
 	drupal_add_css(drupal_get_path('module', 'ggw_state_reporting').'/css/sales_report_form.css');
 
