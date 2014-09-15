@@ -24,7 +24,7 @@ function ggw_state_reporting_download_msa($start_date, $end_date) {
 	$report .= ggw_state_reporting_msa_cell('TOBACO ID: '.$tobacco_id, 84);
 	$report .= ggw_state_reporting_msa_cell($phone, 15);
 	$report .= ggw_state_reporting_msa_cell($fax, 70);
-	$report .= '000100000002'.$date_r.'1'."\n";
+	$report .= '000100000002'.$date_r.'1'."\r\n";
 
 	$total_products = 0;
 	$total_customers = 0;
@@ -96,7 +96,7 @@ function ggw_msa_generate_customer_report($start_date, $end_date, &$total_custom
 			 	$report .= ggw_state_reporting_msa_cell($profile->field_company_address_state, 15);
 			 	$report .= ggw_state_reporting_msa_cell('Retail', 27);
 			 	$report .= ggw_state_reporting_msa_cell('N', 259);
-			 	$report .= 'Y'."\n";
+			 	$report .= 'Y'."\r\n";
 
 			 	$customers_displayed[$customer->uid] = true;
 	 		}
@@ -130,7 +130,7 @@ function ggw_msa_generate_customer_report($start_date, $end_date, &$total_custom
 	 		}
 
 	 		$report .= ggw_state_reporting_msa_cell(number_format($purchase->price, 2, '.', ''), 7, STR_PAD_LEFT, '0');
-	 		$report .= "\n";
+	 		$report .= "\r\n";
 	 	}
 	 }
 
@@ -193,7 +193,7 @@ function ggw_state_reporting_msa_get_inventory_report(&$total_products) {
 		$padded_qty = number_format(abs($quantity_on_hand), 2, '.', '');
 		$content .= ggw_state_reporting_msa_cell($padded_qty, 10, STR_PAD_LEFT, '0');
 
-		$content .= "\n";
+		$content .= "\r\n";
 		$total_products++;
 	}
 
