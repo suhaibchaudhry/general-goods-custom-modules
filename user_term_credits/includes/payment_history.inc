@@ -369,6 +369,26 @@ function utc_customer_statement($user, $themeless = false) {
 	$end_credits = _user_term_credits_getCredits($user->uid);
 
 	$content .= '<pre>'.str_pad('Beginning Balance', 70, '. ').$start_credits->pending_payments_view.'</pre>';
+
+	$transaction_bucket = array();
+	$invoices = db_query("SELECT tl.pid, tl.timestamp, tl.credit_usage_id, tl.ticket_id, tl.amount, cu.due_date
+				 			FROM {pos_api_expose_transaction_log} tl
+				 			INNER JOIN user_term_credits_usages cu ON tl.credit_usage_id = cu.cuid 
+				 			WHERE tl.credit_usage_id <> 0 AND tl.timestamp >= '%s' AND tl.timestamp <= '%s' AND tl.cuid = '%d'", $date, $end_date, $user->uid);
+	while($invoice = db_fetch_object($invoices)) {
+		$transaction_bucket[] = array(
+			'type' => 'invoice',
+			'timestamp' => $invoice->timestamp,
+			'amount' => $invoice->amount,
+			'invoice_id' => $invoice->pid,
+			'ticket_id' => $invoice->ticket_id
+		);
+	}
+
+	$settlements_sql = "SELECT s.sid, u.uid, SUM(s.settlement_amount) AS settlement_amount, GROUP_CONCAT(u.order_id SEPARATOR ',') AS invoice_ids, GROUP_CONCAT(s.settlement_date-u.consumption_date SEPARATOR ',') AS days, GROUP_CONCAT(s.cuid SEPARATOR ',') AS cuids, s.payment_type, s.remarks, s.settlement_date FROM user_term_credits_settlements s LEFT JOIN user_term_credits_usages u ON s.cuid = u.cuid WHERE s.settlement_date >= '%s' AND s.settlement_date <= '%s' AND u.uid = '%d' GROUP BY u.uid, s.settlement_date ORDER BY s.settlement_date DESC";
+
+	
+
 	$content .= '<pre>'.str_pad('Ending Balance', 70, '. ').$end_credits->pending_payments_view.'</pre>';
 
 	if($themeless) {
