@@ -371,5 +371,9 @@ function utc_customer_statement($user, $themeless = false) {
 	$content .= '<pre>'.str_pad('Beginning Balance', 70, '. ').$start_credits->pending_payments_view.'</pre>';
 	$content .= '<pre>'.str_pad('Ending Balance', 70, '. ').$end_credits->pending_payments_view.'</pre>';
 
-	return $content;
+	if($themeless) {
+		print theme('payment_history_report', $content, $user->uid, 'Customer Statement');
+	} else {
+		return $content;
+	}
 }
