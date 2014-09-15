@@ -102,7 +102,11 @@ function utc_invoice_history($user, $themeless = false) {
 
 	$content .= theme('table', $header, $data, array('class' => 'payment-history-table'));
 
-	return $content;
+	if($themeless) {
+		print theme('payment_history_report', $content, $user->uid, 'Invoice History');
+	} else {
+		return $content;
+	}
 }
 
 function utc_payment_history_pos($user) {
@@ -115,6 +119,21 @@ function utc_payment_history_pos($user) {
 	$uid = _pos_api_expose_uid_from_token($token);
 	if($uid) {
 		utc_payment_history($user, true);
+	} else {
+		print "Access denied to reciept.";
+	}
+}
+
+function utc_invoice_history_pos($user) {
+	//Avoid Caching Invoice
+	header('Cache-Control: no-cache, no-store, must-revalidate'); // HTTP 1.1.
+	header('Pragma: no-cache'); // HTTP 1.0.
+	header('Expires: 0'); // Proxies.
+
+	$token = $_GET['token'];
+	$uid = _pos_api_expose_uid_from_token($token);
+	if($uid) {
+		utc_invoice_history($user, true);
 	} else {
 		print "Access denied to reciept.";
 	}
@@ -304,8 +323,38 @@ function utc_payment_history($user, $themeless = false) {
 	$content .= theme('table', $header, $rows, array('class' => 'payment-history-table'));
 
 	if($themeless) {
-		print theme('payment_history_report', $content, $user->uid);
+		print theme('payment_history_report', $content, $user->uid, 'Payment History');
 	} else {
 		return $content;
 	}
+}
+
+function utc_customer_statement($user, $themeless = false) {
+	drupal_add_css(drupal_get_path('module', 'ggw_state_reporting').'/css/sales_report_form.css');
+
+	$profile = content_profile_load('profile', $user->uid);
+
+	$content = $header."\n";
+	$content .= drupal_get_form('user_term_credits_date_range_form');
+
+	if($_GET['start_date']) {
+		$date = strtotime($_GET['start_date']['date'].' '.$_GET['start_date']['time']);
+	} else {
+		$timestamp = time()-15552000;
+		$date = mktime(7, 0, 0, date("n", $timestamp), date("j", $timestamp), date("Y", $timestamp));
+	}
+
+	if($_GET['end_date']) {
+		$end_date = strtotime($_GET['end_date']['date'].' '.$_GET['end_date']['time']);
+	} else {
+		$end_date = mktime(22, 0, 0);
+	}
+
+	$start_credits = _user_term_credits_getCredits($user->uid, $date);
+	$end_credits = _user_term_credits_getCredits($user->uid);
+
+	$content .= '<pre>'.str_pad('Beginning Balance', 70, '. ').$start_credits->pending_payments_view.'</pre>';
+	$content .= '<pre>'.str_pad('Ending Balance', 70, '. ').$end_credits->pending_payments_view.'</pre>';
+
+	return $content;
 }

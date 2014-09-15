@@ -70,6 +70,26 @@ function user_term_credits_menu() {
     'file' => 'includes/payment_history.inc'
   );
 
+  $items['user/%user/term-credits/invoice-history/pos'] = array(
+    'title' => 'Invoice History',
+    'description' => 'Display customer invoice history.',
+    'page callback' => 'utc_invoice_history_pos',
+    'page arguments' => array(1),
+    'access arguments' => array('administer user term credits'),
+    'type' => MENU_LOCAL_TASK,
+    'file' => 'includes/payment_history.inc'
+  );
+
+  $items['user/%user/term-credits/customer-statement'] = array(
+    'title' => 'Customer Statement',
+    'description' => 'Display customer statement.',
+    'page callback' => 'utc_customer_statement',
+    'page arguments' => array(1),
+    'access arguments' => array('administer user term credits'),
+    'type' => MENU_LOCAL_TASK,
+    'file' => 'includes/payment_history.inc'
+  );
+
   return $items;
 }
 
@@ -377,7 +397,7 @@ function _user_term_credits_saveCredits($uid, $creditLimit, $termLimit, $termNot
 	db_query("REPLACE INTO {user_term_credits_limits} VALUES(%d, '%s', '%s', '%s');", $uid, $creditLimit, $termLimit, $termNote);
 }
 
-function _user_term_credits_getCredits($uid) {
+function _user_term_credits_getCredits($uid, $history_before = false) {
 	$credits = db_fetch_object(db_query("SELECT utcl.credit_limit, utcl.term_limit, utcl.term_note FROM {user_term_credits_limits} utcl WHERE utcl.uid = %d", $uid));
 	
 	if(empty($credits->credit_limit)) {
@@ -393,10 +413,20 @@ function _user_term_credits_getCredits($uid) {
 	}
 
 	$sign = variable_get('uc_currency_sign', '$');
-	
-	$outstanding_payments = db_result(db_query("SELECT SUM(utcu.credit_amount) FROM {user_term_credits_usages} utcu WHERE utcu.uid = %d AND utcu.settled = 0", $uid));
 
-	$partial_payments = db_result(db_query("SELECT SUM(utcs.settlement_amount) FROM {user_term_credits_settlements} utcs INNER JOIN {user_term_credits_usages} utcu ON utcu.cuid = utcs.cuid WHERE utcu.uid = %d AND utcu.settled = 0", $uid));
+	if($history_before) {
+		$query = "SELECT SUM(utcu.credit_amount) FROM {user_term_credits_usages} utcu WHERE utcu.uid = %d AND utcu.settled = 0 AND utcu.consumption_date < '%s'";
+		$pquery = "SELECT SUM(utcs.settlement_amount) FROM {user_term_credits_settlements} utcs INNER JOIN {user_term_credits_usages} utcu ON utcu.cuid = utcs.cuid WHERE utcu.uid = %d AND utcu.settled = 0 AND utcs.settlement_date < '%s'";
+
+		$outstanding_payments = db_result(db_query($query, $uid, $history_before));
+		$partial_payments = db_result(db_query($pquery, $uid, $history_before));
+	} else {
+		$query = "SELECT SUM(utcu.credit_amount) FROM {user_term_credits_usages} utcu WHERE utcu.uid = %d AND utcu.settled = 0";
+		$pquery = "SELECT SUM(utcs.settlement_amount) FROM {user_term_credits_settlements} utcs INNER JOIN {user_term_credits_usages} utcu ON utcu.cuid = utcs.cuid WHERE utcu.uid = %d AND utcu.settled = 0";
+
+		$outstanding_payments = db_result(db_query($query, $uid));
+		$partial_payments = db_result(db_query($pquery, $uid));
+	}
 	
 	//$credits->available_credit = (float)$credits->credit_limit - (float)$outstanding_payments + (float)$partial_payments;
 	//$credits->pending_payments = (float)$outstanding_payments - (float)$partial_payments;
@@ -449,7 +479,7 @@ function user_term_credits_theme() {
   return array(
     'payment_history_report' => array(
       'template' => 'templates/payment-history-report',
-      'arguments' => array('content' => null, 'uid' => null)
+      'arguments' => array('content' => null, 'uid' => null, 'report_title' => null)
     )
   );
 }

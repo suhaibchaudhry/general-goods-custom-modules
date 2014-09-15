@@ -87,7 +87,7 @@ if($uid) {
         <?php if($profile->field_tobacco_permit_id[0]['value']) : ?><p><span class="label">Tobacco ID: </span>93044639</p><?php endif; ?>
       </div>
       <div class="invoice-info column">
-        <p class="invoiceid" style="font-size: 1.5em;"><span class="label">Payment History</span></p>
+        <p class="invoiceid" style="font-size: 1.5em;"><span class="label"><?php print $report_title ?></span></p>
         <p class="invoicedate"><span class="label">Print Date:</span> <span class="value"><?php echo date("n/j/Y g:ia", time()); ?></span></p>
       </div>
     </div>
