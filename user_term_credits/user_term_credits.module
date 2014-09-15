@@ -60,6 +60,16 @@ function user_term_credits_menu() {
     'file' => 'includes/payment_history.inc'
   );
 
+  $items['user/%user/term-credits/invoice-history'] = array(
+    'title' => 'Invoice History',
+    'description' => 'Display customer invoice history.',
+    'page callback' => 'utc_invoice_history',
+    'page arguments' => array(1),
+    'access arguments' => array('administer user term credits'),
+    'type' => MENU_LOCAL_TASK,
+    'file' => 'includes/payment_history.inc'
+  );
+
   return $items;
 }
 
