@@ -335,7 +335,7 @@ function utc_customer_statement($user, $themeless = false) {
 	$content .= '<pre>'.str_pad('Beginning Balance', 70, '. ').$start_credits->pending_payments_view.'</pre>';
 
 	$transaction_bucket = array();
-	$invoices = db_query("SELECT tl.pid, tl.timestamp, tl.credit_usage_id, tl.ticket_id, tl.amount, cu.due_date
+	$invoices = db_query("SELECT tl.pid, tl.timestamp, tl.credit_usage_id, tl.ticket_id, tl.amount, cu.due_date, cu.settled
 				 			FROM {pos_api_expose_transaction_log} tl
 				 			INNER JOIN user_term_credits_usages cu ON tl.credit_usage_id = cu.cuid 
 				 			WHERE tl.credit_usage_id <> 0 AND tl.timestamp >= '%s' AND tl.timestamp <= '%s' AND tl.cuid = '%d'", $date, $end_date, $user->uid);
@@ -345,7 +345,10 @@ function utc_customer_statement($user, $themeless = false) {
 			'timestamp' => $invoice->timestamp,
 			'amount' => $invoice->amount,
 			'invoice_id' => $invoice->pid,
-			'ticket_id' => $invoice->ticket_id
+			'ticket_id' => $invoice->ticket_id,
+			'cuid' => $invoice->credit_usage_id,
+			'settled' => $invoice->settled,
+			'due_date' => $invoice->due_date
 		);
 	}
 
@@ -465,10 +468,54 @@ function utc_customer_statement($user, $themeless = false) {
 	$header = array('Date', 'Invoice # / Desc.', 'Charges.', 'Payment', 'Balance.');
 	$rows = array();
 
+	$age_header = array('Invoice', 'Date', 'Amount', 'Due', 'Current', 'In-30', 'In-60', 'In-90', 'In-120', '120+');
+	$age_rows = array();
+
 	$balance = $start_credits->pending_payments;
 	foreach($transaction_bucket as $transaction) {
 		if($transaction['type'] == 'invoice') {
 			$balance = bcadd($balance, $transaction['amount'], 6);
+
+			if($transaction['settled'] == '0') {
+				$row = array(
+					$transaction['invoice_id'].'/'.l($transaction['ticket_id'], 'admin/store/orders/'.$transaction['ticket_id']),
+					date('n/j/Y', $transaction['timestamp']),
+					uc_currency_format(user_term_credits_recursive_round($transaction['amount'])),
+					date('n/j/Y', $transaction['due_date']),
+					'',
+					'',
+					'',
+					'',
+					'',
+					''
+				);
+
+				$date_diff = (time()-$transaction['due_date']);
+				if($date_diff < 0) {
+					$index = 0;
+				} else {
+					$days = floor($date_diff/(60*60*24));
+					if($days >= 0 && $days <= 30) {
+						$index = 1;
+					} elseif ($days > 30 && $days <= 60) {
+						$index = 2;
+					} elseif ($days > 60 && $days <= 90) {
+						$index = 3;
+					} elseif ($days > 90 && $days <= 120) {
+						$index = 4;
+					} elseif ($days > 120) {
+						$index = 5;
+					}
+				}
+
+				$remaining = uc_currency_format(user_term_credits_recursive_round(db_result(db_query("SELECT (cu.credit_amount-IFNULL(pre.paid, 0)) AS balance FROM user_term_credits_usages cu
+	                  LEFT JOIN (SELECT cuid, SUM(settlement_amount) AS paid FROM user_term_credits_settlements GROUP BY cuid) pre ON cu.cuid = pre.cuid
+					  WHERE cu.cuid = '%d'", $transaction['cuid']))));
+
+				$row[$index+4] = $remaining;
+				$age_rows[] = $row;
+			}
+
 			$rows[] = array(
 				date('n/j/Y', $transaction['timestamp']),
 				$transaction['invoice_id'].'/'.l($transaction['ticket_id'], 'admin/store/orders/'.$transaction['ticket_id']),
@@ -501,6 +548,8 @@ function utc_customer_statement($user, $themeless = false) {
 	$content .= theme('table', $header, $rows, array('class' => 'payment-history-table'));
 
 	$content .= '<pre>'.str_pad('Ending Balance', 70, ' .').$end_credits->pending_payments_view.'</pre>';
+
+	$content .= theme('table', $age_header, $age_rows, array('class' => 'payment-history-table'));
 
 	if($themeless) {
 		print theme('payment_history_report', $content, $user->uid, 'Customer Statement');
