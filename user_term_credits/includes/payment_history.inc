@@ -92,7 +92,7 @@ function utc_invoice_history($user, $themeless = false) {
 		$data[] = array(
 			'I',
 			$invoice->pid,
-			$invoice->ticket_id,
+			l($invoice->ticket_id, 'admin/store/orders/'.$invoice->ticket_id),
 			date('n/j/Y', $invoice->timestamp),
 			uc_currency_format(user_term_credits_recursive_round($invoice->amount)),
 			$remaining,
@@ -471,7 +471,7 @@ function utc_customer_statement($user, $themeless = false) {
 			$balance = bcadd($balance, $transaction['amount'], 6);
 			$rows[] = array(
 				date('n/j/Y', $transaction['timestamp']),
-				$transaction['invoice_id'].'/'.$transaction['ticket_id'],
+				$transaction['invoice_id'].'/'.l($transaction['ticket_id'], 'admin/store/orders/'.$transaction['ticket_id']),
 				uc_currency_format(user_term_credits_recursive_round($transaction['amount'])),
 				'',
 				uc_currency_format(user_term_credits_recursive_round($balance))
