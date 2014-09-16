@@ -380,6 +380,8 @@ function _ggw_pos_report_daily() {
 				uc_currency_format($total_sales, false).' (Rounding Error: '.$error.')',
 				'',
 				'',
+				'',
+				'',
 				''
 			);
 		} elseif($no_error == 0) {
@@ -391,6 +393,8 @@ function _ggw_pos_report_daily() {
 				uc_currency_format($total_transacs, false),
 				'',
 				'',
+				'',
+				'',
 				''
 			);
 		} else {
@@ -400,6 +404,8 @@ function _ggw_pos_report_daily() {
 				'',
 				'Invoice Total',
 				uc_currency_format($total_transacs, false).' (Error: '.$error.')',
+				'',
+				'',
 				'',
 				'',
 				''
