@@ -330,6 +330,7 @@ function utc_customer_statement($user, $themeless = false) {
 
 	$start_credits = _user_term_credits_getCredits($user->uid, $date);
 	$end_credits = _user_term_credits_getCredits($user->uid, $end_date);
+	$current_credits = _user_term_credits_getCredits($user->uid); 
 
 	$content .= '<pre>Customer Statement: '.$profile->title."\t\tAccount: ".$user->name."</pre>";
 	$content .= '<pre>'.str_pad('Beginning Balance', 70, '. ').$start_credits->pending_payments_view.'</pre>';
@@ -549,7 +550,11 @@ function utc_customer_statement($user, $themeless = false) {
 
 	$content .= '<pre>'.str_pad('Ending Balance', 70, ' .').$end_credits->pending_payments_view.'</pre>';
 
+	$content .= '<br /><pre>Aging Status:</pre>';
+
 	$content .= theme('table', $age_header, $age_rows, array('class' => 'payment-history-table'));
+
+	$content .= '<pre>Aging Summary: '.$current_credits->pending_payments_view.'</pre>';
 
 	if($themeless) {
 		print theme('payment_history_report', $content, $user->uid, 'Customer Statement');
