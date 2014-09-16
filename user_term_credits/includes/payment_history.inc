@@ -348,15 +348,178 @@ function utc_customer_statement($user, $themeless = false) {
 		);
 	}
 
-	$settlements_sql = "SELECT s.sid, u.uid, SUM(s.settlement_amount) AS settlement_amount, GROUP_CONCAT(u.order_id SEPARATOR ',') AS invoice_ids, GROUP_CONCAT(s.settlement_date-u.consumption_date SEPARATOR ',') AS days, GROUP_CONCAT(s.cuid SEPARATOR ',') AS cuids, s.payment_type, s.remarks, s.settlement_date FROM user_term_credits_settlements s LEFT JOIN user_term_credits_usages u ON s.cuid = u.cuid WHERE s.settlement_date >= '%s' AND s.settlement_date <= '%s' AND u.uid = '%d' GROUP BY u.uid, s.settlement_date ORDER BY s.settlement_date DESC";
+	$settlements_sql = "SELECT s.sid, u.uid, SUM(s.settlement_amount) AS settlement_amount, GROUP_CONCAT(u.order_id SEPARATOR ',') AS invoice_ids, GROUP_CONCAT(s.settlement_date-u.consumption_date SEPARATOR ',') AS days, s.payment_type, s.remarks, s.settlement_date FROM user_term_credits_settlements s LEFT JOIN user_term_credits_usages u ON s.cuid = u.cuid WHERE s.settlement_date >= '%s' AND s.settlement_date <= '%s' AND u.uid = '%d' GROUP BY u.uid, s.settlement_date ORDER BY s.settlement_date DESC";
 
+	$settlements = db_query($settlements_sql, $date, $end_date, $user->uid);
 
+	$payment_types = array(
+		'pos_payment' => 'Register Payment',
+		'cash' => 'Cash - B.O.',
+		'check' => 'Check - B.O.',
+		'money_order' => 'M.O. - B.O.',
+		'post_check' => 'Post Dated Check - B.O.'
+	);
 
-	$content .= '<pre>'.str_pad('Ending Balance', 70, '. ').$end_credits->pending_payments_view.'</pre>';
+	$rows = array();
+	while($settlement = db_fetch_object($settlements)) {
+		$column_1 = '';
+		$column_2 = '';
+		$method = array();
+		$payment = array();
+
+		$pay_items = split("\n", $settlement->remarks);
+
+		$payment_types_cr = array(
+			'MO' => 'MONEY ORDER',
+			'CC' => 'CREDIT CARD',
+			'PCHECK' => 'POST DATED CHECK'
+		);
+
+		foreach($pay_items as $pay_item) {
+			$components = split("\|", $pay_item);
+			if($components[0] == 'CASH' || $components[0] == 'CHANGE') {
+				$stash = db_fetch_object(db_query("SELECT `change`, stashed FROM user_term_credits_cash_log WHERE sid = '%d'", $settlement->sid));
+				if($stash->stashed) {
+					if($components[0] == 'CHANGE') {
+						$stashed_rma_change = bcadd($stash->change, $stashed_rma_change, 6);
+						$column_1 .= 'RMA SENT ';
+					}
+				}
+
+				if($components[0] != 'CASH' && $components[0] != 'CHANGE' && $components[1] > 0) {
+					$column_1 .= $components[0];
+					$column_2 .= $components[1];
+
+					$method[] = $column_1;
+					$payment[] = $column_2;
+				}
+
+				$column_1 = '';
+				$column_2 = '';
+			}
+		}
+
+		$i = 0;
+		foreach($pay_items as $pay_item) {
+			$components = split("\|", $pay_item);
+			if($components[0] != 'CASH' && $components[0] != 'CHANGE' && $components[1] > 0) {
+				if($payment_types_cr[$components[0]]) {
+					$column_1 .= $payment_types_cr[$components[0]];
+				} else {
+					$column_1 .= $components[0];
+				}
+				if($components[0] == 'CHECK' || $components[0] == 'PCHECK') {
+					$check_info = db_fetch_object(db_query("SELECT check_number, cash_date, post_dated FROM user_term_credits_check_log WHERE sid = '%d'", $settlement->sid));
+					if($check_info->check_number) {
+						$column_1 .= ' - '.$check_info->check_number;
+					}
+					if($check_info->post_dated) {
+						if($check_info->cash_date) {
+							$column_1 .= ' - '.$check_info->cash_date;
+						}
+					}
+				}
+				if($components[0] == 'CC') {
+					$transaction_id = db_result(db_query("SELECT transaction_id FROM user_term_credits_credit_card_log WHERE sid = '%d'", $settlement->sid));
+					if($transaction_id) {
+						$column_1 .= ' - '.$transaction_id;
+					}
+				}
+				if($components[0] == 'MO') {
+					$mo_payment = db_result(db_query("SELECT reference FROM user_term_credits_money_order_log WHERE sid = '%d'", $settlement->sid));
+					if($mo_payment) {
+						$column_1 .= ' - '.$mo_payment;
+					}
+				}
+				$column_2 .= $components[1];
+
+				$method[] = $column_1;
+				$payment[] = $column_2;
+
+				$column_1 = '';
+				$column_2 = '';
+			}
+			$i++;
+		}
+
+		$invoice_links = explode(',', $settlement->invoice_ids);
+		$invoices = '';
+		foreach($invoice_links as $link) {
+			$invoices .= l($link, 'admin/store/orders/'.$link).'<br />';
+		}
+
+		$settlement_days = explode(',', $settlement->days);
+		$days = '';
+		foreach($settlement_days as $day) {
+			$days .= floor(($day)/86430).'<br />';
+		}
+
+		if(empty($method) && empty($payment)) {
+			$transaction_bucket[] = array(
+				'type' => 'settlement',
+				'timestamp' => $settlement->settlement_date,
+				'method' => array(strtoupper($settlement->payment_type)),
+				'payment' => array($settlement->settlement_amount)
+			);
+		} else {
+			$transaction_bucket[] = array(
+				'type' => 'settlement',
+				'timestamp' => $settlement->settlement_date,
+				'method' => $method,
+				'payment' => $payment
+			);
+		}
+	}
+
+	usort($transaction_bucket, 'utc_compare_statement_items');
+
+	$header = array('Date', 'Invoice # / Desc.', 'Charges.', 'Payment', 'Balance.');
+	$rows = array();
+
+	$balance = $start_credits->pending_payments;
+	foreach($transaction_bucket as $transaction) {
+		if($transaction['type'] == 'invoice') {
+			$balance = bcadd($balance, $transaction['amount'], 6);
+			$rows[] = array(
+				date('n/j/Y', $transaction['timestamp']),
+				$transaction['invoice_id'].'/'.$transaction['ticket_id'],
+				uc_currency_format(user_term_credits_recursive_round($transaction['amount'])),
+				'',
+				uc_currency_format(user_term_credits_recursive_round($balance))
+			);
+		} else {
+			$column_1 = '';
+			$column_2 = '';
+			$bal_col = '';
+			foreach($transaction['method'] as $method) {
+				$column_1 .= $method.'<br />';
+			}
+			foreach($transaction['payment'] as $method) {
+				$column_2 .= uc_currency_format(user_term_credits_recursive_round($method)).'<br />';
+				$balance = bcsub($balance, $method, 6);
+				$bal_col .= uc_currency_format(user_term_credits_recursive_round($balance)).'<br />';
+			}
+			$rows[] = array(
+				date('n/j/Y', $transaction['timestamp']),
+				$column_1,
+				'',
+				$column_2,
+				$bal_col
+			);
+		}
+	}
+
+	$content .= theme('table', $header, $rows);
+
+	$content .= '<pre>'.str_pad('Ending Balance', 70, ' .').$end_credits->pending_payments_view.'</pre>';
 
 	if($themeless) {
 		print theme('payment_history_report', $content, $user->uid, 'Customer Statement');
 	} else {
 		return $content;
 	}
+}
+
+function utc_compare_statement_items($a, $b) {
+	return ((int)$a['timestamp'])-((int)$b['timestamp']);
 }
