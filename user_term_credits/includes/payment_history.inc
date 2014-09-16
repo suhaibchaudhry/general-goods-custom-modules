@@ -332,7 +332,7 @@ function utc_customer_statement($user, $themeless = false) {
 	$end_credits = _user_term_credits_getCredits($user->uid, $end_date);
 	$current_credits = _user_term_credits_getCredits($user->uid); 
 
-	$content .= '<pre>Customer Statement: '.$profile->title."\t\tAccount: ".$user->name."</pre>";
+	$content .= '<p style="clear: both;"></p><pre>Customer Statement: '.$profile->title."\t\tAccount: ".$user->name."</pre>";
 	$content .= '<pre>'.str_pad('Beginning Balance', 70, '. ').$start_credits->pending_payments_view.'</pre>';
 
 	$transaction_bucket = array();
