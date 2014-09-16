@@ -349,7 +349,7 @@ function utc_customer_statement($user, $themeless = false) {
 		);
 	}
 
-	$settlements_sql = "SELECT s.sid, u.uid, SUM(s.settlement_amount) AS settlement_amount, GROUP_CONCAT(u.order_id SEPARATOR ',') AS invoice_ids, GROUP_CONCAT(s.settlement_date-u.consumption_date SEPARATOR ',') AS days, s.payment_type, s.remarks, s.settlement_date FROM user_term_credits_settlements s LEFT JOIN user_term_credits_usages u ON s.cuid = u.cuid WHERE s.settlement_date >= '%s' AND s.settlement_date <= '%s' AND u.uid = '%d' GROUP BY u.uid, s.settlement_date ORDER BY s.settlement_date DESC";
+	$settlements_sql = "SELECT s.sid, u.uid, SUM(s.settlement_amount) AS settlement_amount, s.payment_type, s.remarks, s.settlement_date FROM user_term_credits_settlements s LEFT JOIN user_term_credits_usages u ON s.cuid = u.cuid WHERE s.settlement_date >= '%s' AND s.settlement_date <= '%s' AND u.uid = '%d' GROUP BY u.uid, s.settlement_date ORDER BY s.settlement_date DESC";
 
 	$settlements = db_query($settlements_sql, $date, $end_date, $user->uid);
 
@@ -441,18 +441,6 @@ function utc_customer_statement($user, $themeless = false) {
 				$column_2 = '';
 			}
 			$i++;
-		}
-
-		$invoice_links = explode(',', $settlement->invoice_ids);
-		$invoices = '';
-		foreach($invoice_links as $link) {
-			$invoices .= l($link, 'admin/store/orders/'.$link).'<br />';
-		}
-
-		$settlement_days = explode(',', $settlement->days);
-		$days = '';
-		foreach($settlement_days as $day) {
-			$days .= floor(($day)/86430).'<br />';
 		}
 
 		if(empty($method) && empty($payment)) {
