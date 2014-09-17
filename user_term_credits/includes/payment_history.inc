@@ -566,3 +566,28 @@ function utc_customer_statement($user, $themeless = false) {
 function utc_compare_statement_items($a, $b) {
 	return ((int)$a['timestamp'])-((int)$b['timestamp']);
 }
+
+function utc_customer_activity_report() {
+	drupal_add_css(drupal_get_path('module', 'ggw_state_reporting').'/css/sales_report_form.css');
+
+	$profile = content_profile_load('profile', $user->uid);
+
+	$content = $header."\n";
+	$content .= drupal_get_form('user_term_credits_date_range_form');
+
+	if($_GET['start_date']) {
+		$date = strtotime($_GET['start_date']['date'].' '.$_GET['start_date']['time']);
+	} else {
+		$timestamp = time()-15552000;
+		$date = mktime(7, 0, 0, date("n", $timestamp), date("j", $timestamp), date("Y", $timestamp));
+	}
+
+	if($_GET['end_date']) {
+		$end_date = strtotime($_GET['end_date']['date'].' '.$_GET['end_date']['time']);
+	} else {
+		$end_date = mktime(22, 0, 0);
+	}
+
+
+	return $content;
+}

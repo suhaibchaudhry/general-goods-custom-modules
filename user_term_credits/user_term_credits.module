@@ -100,6 +100,16 @@ function user_term_credits_menu() {
     'file' => 'includes/payment_history.inc'
   );
 
+  $items['admin/store/reports/customer-activity'] = array(
+    'title' => 'Customer Activity Report',
+    'description' => 'Display customer activity report.',
+    'page callback' => 'utc_customer_activity_report',
+    'page arguments' => array(1),
+    'access arguments' => array('access content'),
+    'type' => MENU_NORMAL_ITEM,
+    'file' => 'includes/payment_history.inc'
+  );
+
   return $items;
 }
 
