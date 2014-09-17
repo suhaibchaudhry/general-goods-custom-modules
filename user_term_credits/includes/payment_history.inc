@@ -43,6 +43,13 @@ function user_term_credits_date_range_form() {
 		'#value' => 'Apply'
 	);
 
+	if($_GET['token']) {
+		$form['token'] = array(
+			'#type' => 'hidden',
+			'#value' => $_GET['token']
+		);
+	}
+
 	$form['reset_button'] = array(
 	    '#type' => 'markup',
 	    '#value' => l('Reset to last 180 days', $_GET['q'], array('attributes' => array('class' => 'reset-button')))
