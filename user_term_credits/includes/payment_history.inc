@@ -398,13 +398,13 @@ function utc_customer_statement($user, $themeless = false) {
 					}
 				}
 
-				if($components[0] != 'CASH' && $components[0] != 'CHANGE' && $components[1] > 0) {
+				//if($components[0] != 'CASH' && $components[0] != 'CHANGE' && $components[1] > 0) {
 					$column_1 .= $components[0];
 					$column_2 .= $components[1];
 
 					$method[] = $column_1;
 					$payment[] = $column_2;
-				}
+				//}
 
 				$column_1 = '';
 				$column_2 = '';
@@ -538,10 +538,17 @@ function utc_customer_statement($user, $themeless = false) {
 			foreach($transaction['method'] as $method) {
 				$column_1 .= $method.'<br />';
 			}
+			$i = 0;
 			foreach($transaction['payment'] as $method) {
 				$column_2 .= uc_currency_format(user_term_credits_recursive_round($method)).'<br />';
-				$balance = bcsub($balance, $method, 6);
-				$bal_col .= uc_currency_format(user_term_credits_recursive_round($balance)).'<br />';
+				if($transaction['method'][$i] == 'CHANGE') {
+					$balance = bcadd($balance, $method, 6);
+					$bal_col .= uc_currency_format(user_term_credits_recursive_round($balance)).'<br />';
+				} else {
+					$balance = bcsub($balance, $method, 6);
+					$bal_col .= uc_currency_format(user_term_credits_recursive_round($balance)).'<br />';
+				}
+				$i++;
 			}
 			$rows[] = array(
 				date('n/j/Y', $transaction['timestamp']),
