@@ -630,13 +630,16 @@ function utc_customer_activity_report() {
 	$rows = array();
 	while($customer = db_fetch_object($customers)) {
 		$profile = content_profile_load('profile', $customer->customer_uid);
+		$start_account = _user_term_credits_getCredits($customer->customer_uid, $date);
+		$end_account = _user_term_credits_getCredits($customer->customer_uid, $end_date);
+
 		$rows[] = array(
 			$profile->name.'- '.substr($profile->title, 0, 20),
 			format_phone_number($profile->field_profile_phone[0]['number']),
+			substr($start_account->pending_payments_view, 1),
 			'',
 			'',
-			'',
-			'',
+			substr($end_account->pending_payments_view, 1),
 			''
 		);
 	}
