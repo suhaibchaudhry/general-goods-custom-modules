@@ -546,7 +546,11 @@ function utc_customer_statement($user, $themeless = false) {
 					$bal_col .= uc_currency_format(user_term_credits_recursive_round($balance)).'<br />';
 				} else {
 					$balance = bcsub($balance, $method, 6);
-					$bal_col .= uc_currency_format(user_term_credits_recursive_round($balance)).'<br />';
+					if($transaction['method'][$i] == 'CASH' && in_array('CHANGE', $transaction['method'])) {
+						$bal_col .= '<br />';
+					} else {
+						$bal_col .= uc_currency_format(user_term_credits_recursive_round($balance)).'<br />';
+					}
 				}
 				$i++;
 			}
