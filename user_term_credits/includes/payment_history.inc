@@ -541,12 +541,12 @@ function utc_customer_statement($user, $themeless = false) {
 			$i = 0;
 			foreach($transaction['payment'] as $method) {
 				$column_2 .= uc_currency_format(user_term_credits_recursive_round($method)).'<br />';
-				if($transaction['method'][$i] == 'CHANGE') {
+				if($transaction['method'][$i] == 'CHANGE' || $transaction['method'][$i] == 'RMA SENT CHANGE') {
 					$balance = bcadd($balance, $method, 6);
 					$bal_col .= uc_currency_format(user_term_credits_recursive_round($balance)).'<br />';
 				} else {
 					$balance = bcsub($balance, $method, 6);
-					if($transaction['method'][$i] == 'CASH' && in_array('CHANGE', $transaction['method'])) {
+					if($transaction['method'][$i] == 'CASH' && in_array('CHANGE', $transaction['method']) || in_array('RMA SENT CHANGE', $transaction['method'])) {
 						$bal_col .= '<br />';
 					} else {
 						$bal_col .= uc_currency_format(user_term_credits_recursive_round($balance)).'<br />';
