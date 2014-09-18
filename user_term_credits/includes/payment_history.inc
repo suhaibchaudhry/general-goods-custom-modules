@@ -1,10 +1,14 @@
 <?php
-function user_term_credits_date_range_form() {
+function user_term_credits_date_range_form($form_state, $timestamp_delta = 15552000) {
 	$form = array();
 	if($_GET['start_date']) {
 		$date = $_GET['start_date']['date'].' '.$_GET['start_date']['time'];
 	} else {
-		$timestamp = time()-15552000;
+		if($timestamp_delta) {
+			$timestamp = time()-(int)$timestamp_delta;
+		} else {
+			$timestamp = time()-15552000;
+		}
 		$date = date( "Y-m-d H:i", mktime(7, 0, 0, date("n", $timestamp), date("j", $timestamp), date("Y", $timestamp)));
 	}
 
@@ -50,9 +54,15 @@ function user_term_credits_date_range_form() {
 		);
 	}
 
+	if($timestamp_delta) {
+		$timestamp_days = floor((int)$timestamp_delta/86400);
+	} else {
+		$timestamp_days = '180';
+	}
+
 	$form['reset_button'] = array(
 	    '#type' => 'markup',
-	    '#value' => l('Reset to last 180 days', $_GET['q'], array('attributes' => array('class' => 'reset-button')))
+	    '#value' => l('Reset to last '.$timestamp_days.' days', $_GET['q'], array('attributes' => array('class' => 'reset-button')))
 	);
 
 	return $form;
@@ -591,12 +601,12 @@ function utc_customer_activity_report() {
 	$profile = content_profile_load('profile', $user->uid);
 
 	$content = $header."\n";
-	$content .= drupal_get_form('user_term_credits_date_range_form');
+	$content .= drupal_get_form('user_term_credits_date_range_form', 2592000);
 
 	if($_GET['start_date']) {
 		$date = strtotime($_GET['start_date']['date'].' '.$_GET['start_date']['time']);
 	} else {
-		$timestamp = time()-15552000;
+		$timestamp = time()-2592000;
 		$date = mktime(7, 0, 0, date("n", $timestamp), date("j", $timestamp), date("Y", $timestamp));
 	}
 
@@ -606,6 +616,39 @@ function utc_customer_activity_report() {
 		$end_date = mktime(22, 0, 0);
 	}
 
+	$invoices = "SELECT tl.cuid AS customer_uid, tl.timestamp AS etime
+				 			FROM {pos_api_expose_transaction_log} tl 
+				 			WHERE tl.credit_usage_id <> 0 AND tl.timestamp >= '%s' AND tl.timestamp <= '%s' GROUP BY tl.cuid";
+
+	$settlements_sql = "SELECT u.uid AS customer_uid, s.settlement_date AS etime FROM user_term_credits_settlements s LEFT JOIN user_term_credits_usages u ON s.cuid = u.cuid WHERE s.settlement_date >= '%s' AND s.settlement_date <= '%s' GROUP BY u.uid, s.settlement_date";
+
+	$sql = "SELECT p.customer_uid, MAX(p.etime) AS latest_interaction FROM (".$invoices." UNION ".$settlements_sql.") p GROUP BY customer_uid ORDER BY latest_interaction DESC";
+
+	$customers = db_query($sql, $date, $end_date, $date, $end_date);
+
+	$header = array('Customer', 'Phone #', 'Previous Balance', 'Receipt', 'Payment', 'Current Balance', 'Tax Amount');
+	$rows = array();
+	while($customer = db_fetch_object($customers)) {
+		$profile = content_profile_load('profile', $customer->customer_uid);
+		$rows[] = array(
+			$profile->name.'- '.substr($profile->title, 0, 20),
+			format_phone_number($profile->field_profile_phone[0]['number']),
+			'',
+			'',
+			'',
+			'',
+			''
+		);
+	}
+
+	$content .= theme('table', $header, $rows);
 
 	return $content;
+}
+
+function format_phone_number($data) {
+	if(  preg_match( '/^(\d{3})(\d{3})(\d{4})$/', $data,  $matches ) ) {
+	    $result = '('.$matches[1] . ') ' .$matches[2] . '-' . $matches[3];
+	    return $result;
+	}
 }
