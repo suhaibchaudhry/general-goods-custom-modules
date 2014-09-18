@@ -628,21 +628,63 @@ function utc_customer_activity_report() {
 
 	$header = array('Customer', 'Phone #', 'Previous Balance', 'Receipt', 'Payment', 'Current Balance', 'Tax Amount');
 	$rows = array();
+	$total_previous = '0';
+	$total_receipt = '0';
+	$total_payment = '0';
+	$current_outstanding = '0';
+	$total_tax = '0';
+
 	while($customer = db_fetch_object($customers)) {
 		$profile = content_profile_load('profile', $customer->customer_uid);
 		$start_account = _user_term_credits_getCredits($customer->customer_uid, $date);
 		$end_account = _user_term_credits_getCredits($customer->customer_uid, $end_date);
 
+		$total_previous = bcadd($total_previous, $start_account->pending_payments, 6);
+		$current_outstanding = bcadd($current_outstanding, $end_account->pending_payments, 6);
+
+		$receipt_amount = db_result(db_query("SELECT SUM(tl.amount)
+				 			FROM {pos_api_expose_transaction_log} tl 
+				 			WHERE tl.credit_usage_id <> 0 AND tl.timestamp >= '%s' AND tl.timestamp <= '%s' AND tl.cuid = '%d'", $date, $end_date, $customer->customer_uid));
+
+		if($receipt_amount) {
+			$total_receipt = bcadd($total_receipt, $receipt_amount, 6);
+		}
+
+		$payment_amount = db_result(db_query("SELECT SUM(s.settlement_amount) FROM user_term_credits_settlements s LEFT JOIN user_term_credits_usages u ON s.cuid = u.cuid WHERE s.settlement_date >= '%s' AND s.settlement_date <= '%s' AND u.uid = '%d' GROUP BY u.uid, s.settlement_date", $date, $end_date, $customer->customer_uid));
+
+		if($payment_amount) {
+			$total_payment = bcadd($total_payment, $payment_amount, 6);
+		}
+
+		$tax_amount = db_result(db_query("SELECT SUM(ucl.amount)
+				 			FROM {pos_api_expose_transaction_log} tl
+				 			INNER JOIN {uc_order_line_items} ucl ON tl.ticket_id = ucl.order_id 
+				 			WHERE tl.credit_usage_id <> 0 AND tl.timestamp >= '%s' AND tl.timestamp <= '%s' AND tl.cuid = '%d'", $date, $end_date, $customer->customer_uid));
+
+		if($tax_amount) {
+			$total_tax = bcadd($total_tax, $tax_amount, 6);
+		}
+
 		$rows[] = array(
-			$profile->name.'- '.substr($profile->title, 0, 20),
+			$profile->name.'- '.substr($profile->title, 0, 24),
 			format_phone_number($profile->field_profile_phone[0]['number']),
 			substr($start_account->pending_payments_view, 1),
-			'',
-			'',
+			$receipt_amount,
+			$payment_amount,
 			substr($end_account->pending_payments_view, 1),
-			''
+			$tax_amount
 		);
 	}
+
+	$rows[] = array(
+		'',
+		'',
+		$total_previous,
+		$total_receipt,
+		$total_payment,
+		$current_outstanding,
+		$total_tax
+	);
 
 	$content .= theme('table', $header, $rows);
 
