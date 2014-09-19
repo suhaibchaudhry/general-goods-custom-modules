@@ -650,7 +650,7 @@ function utc_customer_activity_report() {
 			$total_receipt = bcadd($total_receipt, $receipt_amount, 6);
 		}
 
-		$payment_amount = db_result(db_query("SELECT SUM(s.settlement_amount) FROM user_term_credits_settlements s LEFT JOIN user_term_credits_usages u ON s.cuid = u.cuid WHERE s.settlement_date >= '%s' AND s.settlement_date <= '%s' AND u.uid = '%d' GROUP BY u.uid, s.settlement_date", $date, $end_date, $customer->customer_uid));
+		$payment_amount = db_result(db_query("SELECT SUM(s.settlement_amount) FROM user_term_credits_settlements s LEFT JOIN user_term_credits_usages u ON s.cuid = u.cuid WHERE s.settlement_date >= '%s' AND s.settlement_date <= '%s' AND u.uid = '%d' GROUP BY u.uid", $date, $end_date, $customer->customer_uid));
 
 		if($payment_amount) {
 			$total_payment = bcadd($total_payment, $payment_amount, 6);
