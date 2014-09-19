@@ -665,6 +665,24 @@ function utc_customer_activity_report() {
 			$total_tax = bcadd($total_tax, $tax_amount, 6);
 		}
 
+		if($receipt_amount) {
+			$receipt_amount = uc_currency_format(user_term_credits_recursive_round($receipt_amount), false);
+		} else {
+			$receipt_amount = '';
+		}
+
+		if($payment_amount) {
+			$payment_amount = uc_currency_format(user_term_credits_recursive_round($payment_amount), false);
+		} else {
+			$payment_amount = '';
+		}
+
+		if($tax_amount) {
+			$tax_amount = uc_currency_format(user_term_credits_recursive_round($tax_amount), false);
+		} else {
+			$tax_amount = '';
+		}
+
 		$rows[] = array(
 			$profile->name.'- '.substr($profile->title, 0, 24),
 			format_phone_number($profile->field_profile_phone[0]['number']),
@@ -679,11 +697,11 @@ function utc_customer_activity_report() {
 	$rows[] = array(
 		'',
 		'',
-		$total_previous,
-		$total_receipt,
-		$total_payment,
-		$current_outstanding,
-		$total_tax
+		'<strong>'.uc_currency_format(user_term_credits_recursive_round($total_previous), false).'</strong>',
+		'<strong>'.uc_currency_format(user_term_credits_recursive_round($total_receipt), false).'</strong>',
+		'<strong>'.uc_currency_format(user_term_credits_recursive_round($total_payment), false).'</strong>',
+		'<strong>'.uc_currency_format(user_term_credits_recursive_round($current_outstanding), false).'</strong>',
+		'<strong>'.uc_currency_format(user_term_credits_recursive_round($total_tax), false).'</strong>'
 	);
 
 	$content .= theme('table', $header, $rows);
