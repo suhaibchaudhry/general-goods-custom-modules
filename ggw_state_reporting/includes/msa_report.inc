@@ -199,3 +199,51 @@ function ggw_state_reporting_msa_get_inventory_report(&$total_products) {
 
 	return $content;
 }
+
+function ggw_state_reporting_download_state($start_date, $end_date) {
+		header("Content-type: text/csv");
+		header('Content-disposition: attachment;filename=statereport.csv');
+
+		$report_entries = db_query("SELECT pn.title AS company, ctp.field_tax_id_value, ctp.field_tobacco_permit_id_value, ctp.field_company_address_street1, ctp.field_company_address_street2, ctp.field_company_address_zip, ctp.field_company_address_city, ctp.field_company_address_state, uo.order_id, ls.title, ls.tQty, uo.uid, ls.tPrice, ls.packaging, uo.order_total, ls.name FROM (SELECT order_id, title, td.name, srt.packaging, SUM(qty) AS tQty, SUM(price) as tPrice FROM {uc_order_products} uop INNER JOIN {term_node} tn ON uop.nid = tn.nid INNER JOIN {term_data} td ON tn.tid = td.tid INNER JOIN {ggw_state_reporting_terms} srt ON tn.tid = srt.vid WHERE srt.setting IN ('1', '3') GROUP BY order_id, tn.tid) ls INNER JOIN {uc_orders} uo ON ls.order_id = uo.order_id INNER JOIN {node} pn ON pn.uid = uo.uid INNER JOIN {content_type_profile} ctp ON pn.vid = ctp.vid WHERE uo.order_status = 'pos_completed' AND pn.type = 'profile'");
+
+
+		$fp = fopen('php://output', 'w');
+
+		fputcsv($fp, array(
+			'GOVT ID',
+			'CUSTOMER TAX ID',
+			'CUSTOMER COMPANY NAME',
+			'CUSTOMER ADDRESS',
+			'CUSTOMER CITY',
+			'STATE',
+			'ZIP',
+			'TOBACCO ID',
+			'CATEGORY',
+			'DESC',
+			'COUNT',
+			'SALE'
+		));
+
+		fputcsv($fp, $row);
+
+		while($report_entry = db_fetch_object($report_entries)) {
+			$row = array(
+				'93044639',
+				$report_entry->field_tax_id_value,
+				$report_entry->company,
+				$report_entry->field_company_address_street1.' '.$report_entry->field_company_address_street2,
+				$report_entry->field_company_address_city,
+				$report_entry->field_company_address_state,
+				$report_entry->field_company_address_zip,
+				$report_entry->field_tobacco_permit_id_value,
+				$report_entry->name,
+				$report_entry->packaging,
+				$report_entry->tQty,
+				round($report_entry->tPrice)
+			);
+
+			fputcsv($fp, $row);
+		}
+
+		fclose($fp);
+}
