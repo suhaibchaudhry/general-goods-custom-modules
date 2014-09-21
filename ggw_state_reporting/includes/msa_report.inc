@@ -224,8 +224,6 @@ function ggw_state_reporting_download_state($start_date, $end_date) {
 			'SALE'
 		));
 
-		fputcsv($fp, $row);
-
 		while($report_entry = db_fetch_object($report_entries)) {
 			$row = array(
 				'93044639',
