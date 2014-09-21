@@ -58,7 +58,7 @@ function ggw_msa_generate_customer_report($start_date, $end_date, &$total_custom
 
 	$customers = db_query("SELECT uo.uid, uo.order_status, GROUP_CONCAT(DISTINCT uo.order_id ORDER BY uo.order_id ASC SEPARATOR ',') AS tickets FROM {uc_orders} uo
 	 INNER JOIN {pos_api_expose_transaction_log} tl ON tl.ticket_id = uo.order_id
-	 WHERE uo.order_status = 'pos_completed' OR uo.order_status = 'pos_return_closed' AND tl.timestamp >= '%s' AND tl.timestamp <= '%s'
+	 WHERE (uo.order_status = 'pos_completed' OR uo.order_status = 'pos_return_closed') AND tl.timestamp >= '%s' AND tl.timestamp <= '%s'
 	 GROUP BY uo.uid, uo.order_status", $start_date, $end_date);
 
 	 $customers_displayed = array();
@@ -204,7 +204,7 @@ function ggw_state_reporting_download_state($start_date, $end_date) {
 		header("Content-type: text/csv");
 		header('Content-disposition: attachment;filename=statereport.csv');
 
-		$report_entries = db_query("SELECT pn.title AS company, ctp.field_tax_id_value, ctp.field_tobacco_permit_id_value, ctp.field_company_address_street1, ctp.field_company_address_street2, ctp.field_company_address_zip, ctp.field_company_address_city, ctp.field_company_address_state, uo.order_id, ls.title, ls.tQty, uo.uid, ls.tPrice, ls.packaging, uo.order_total, ls.name FROM (SELECT order_id, title, td.name, srt.packaging, SUM(qty) AS tQty, SUM(price*qty) as tPrice FROM {uc_order_products} uop INNER JOIN {term_node} tn ON uop.nid = tn.nid INNER JOIN {term_data} td ON tn.tid = td.tid INNER JOIN {ggw_state_reporting_terms} srt ON tn.tid = srt.vid WHERE srt.setting IN ('1', '3') GROUP BY order_id, tn.tid) ls INNER JOIN {uc_orders} uo ON ls.order_id = uo.order_id INNER JOIN {node} pn ON pn.uid = uo.uid INNER JOIN {content_type_profile} ctp ON pn.vid = ctp.vid WHERE uo.order_status = 'pos_completed' AND pn.type = 'profile'");
+		$report_entries = db_query("SELECT pn.title AS company, ctp.field_tax_id_value, ctp.field_tobacco_permit_id_value, ctp.field_company_address_street1, ctp.field_company_address_street2, ctp.field_company_address_zip, ctp.field_company_address_city, ctp.field_company_address_state, uo.order_id, ls.title, ls.tQty, uo.uid, ls.tPrice, ls.packaging, uo.order_total, ls.name FROM (SELECT order_id, title, td.name, srt.packaging, SUM(qty) AS tQty, SUM(price*qty) as tPrice FROM {uc_order_products} uop INNER JOIN {term_node} tn ON uop.nid = tn.nid INNER JOIN {term_data} td ON tn.tid = td.tid INNER JOIN {ggw_state_reporting_terms} srt ON tn.tid = srt.vid WHERE srt.setting IN ('1', '3') GROUP BY order_id, tn.tid) ls INNER JOIN {uc_orders} uo ON ls.order_id = uo.order_id INNER JOIN {pos_api_expose_transaction_log} tl ON tl.ticket_id = uo.order_id INNER JOIN {node} pn ON pn.uid = uo.uid INNER JOIN {content_type_profile} ctp ON pn.vid = ctp.vid WHERE uo.order_status = 'pos_completed' AND pn.type = 'profile' AND tl.timestamp >= '%s' AND tl.timestamp <= '%s'", $start_date, $end_date);
 
 
 		$fp = fopen('php://output', 'w');
