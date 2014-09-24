@@ -66,6 +66,12 @@ if($uid) {
 	  	visibility: hidden;
 	  }
   }
+
+  @media screen {
+	body {
+	font-size: 1.5em;
+	}
+  }
   </style>
   <script type="text/javascript">
   function printAndClose() {
