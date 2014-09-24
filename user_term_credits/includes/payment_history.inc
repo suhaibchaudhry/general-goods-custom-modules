@@ -353,7 +353,7 @@ function utc_customer_statement($user, $themeless = false) {
 	$content .= '<pre>'.str_pad('Beginning Balance', 70, '. ').$start_credits->pending_payments_view.'</pre>';
 
 	$transaction_bucket = array();
-	$invoices = db_query("SELECT tl.pid, tl.timestamp, tl.credit_usage_id, tl.ticket_id, tl.amount, cu.due_date, cu.settled
+	$invoices = db_query("SELECT tl.pid, tl.timestamp, tl.credit_usage_id, tl.ticket_id, cu.credit_amount AS amount, cu.due_date, cu.settled
 				 			FROM {pos_api_expose_transaction_log} tl
 				 			INNER JOIN user_term_credits_usages cu ON tl.credit_usage_id = cu.cuid 
 				 			WHERE tl.credit_usage_id <> 0 AND tl.timestamp >= '%s' AND tl.timestamp <= '%s' AND tl.cuid = '%d'", $date, $end_date, $user->uid);
