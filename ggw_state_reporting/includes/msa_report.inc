@@ -152,7 +152,12 @@ function ggw_state_reporting_msa_get_inventory_report(&$total_products) {
 	$bid = ggw_state_reporting_msa_cell('BID', 5);
 	$products = db_query($sql);
 
+	$products_array = array();
 	while($product = db_fetch_object($products)) {
+		$products_array[] = $product;
+	}
+
+	foreach($products_array as $product) {
 		$total_products++;
 		$content .= $bid.ggw_state_reporting_msa_cell($product->model, 12, STR_PAD_LEFT);
 		$content .= '00'.ggw_state_reporting_msa_cell($product->model, 12, STR_PAD_LEFT, '0');
