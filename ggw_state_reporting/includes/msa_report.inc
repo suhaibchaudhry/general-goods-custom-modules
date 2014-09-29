@@ -194,7 +194,7 @@ function ggw_state_reporting_msa_get_inventory_report(&$total_products) {
 		$content .= ggw_state_reporting_msa_cell($padded_qty, 10, STR_PAD_LEFT, '0');
 
 		$content .= "\r\n";
-		$total_products++;
+		//$total_products++;
 	}
 
 	return $content;
