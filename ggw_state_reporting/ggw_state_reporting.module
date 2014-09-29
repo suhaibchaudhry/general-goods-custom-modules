@@ -437,7 +437,7 @@ function ggw_state_reporting_date_range_form($form_state, $path = false, $dp = t
 		$form['existing_msa'] = array(
 			'#type' => 'file',
 		    '#title' => t('Existing MSA Report'),
-		    '#description' => t('Upload an existing report to merge with.')
+		    '#description' => t('Upload an existing report to merge with (Extensions: txt or TXT)')
 		);
 
 		$form['download_msa'] = array(
@@ -497,7 +497,11 @@ function ggw_state_reporting_date_range_form_submit($form, $form_state) {
 			$end_date = mktime(22, 0, 0);
 		}
 
-		ggw_state_reporting_download_msa($start_date, $end_date);
+		$file = file_save_upload('existing_msa', 
+			array('file_validate_extensions' => array('TXT', 'txt'))
+		);
+
+		ggw_state_reporting_download_msa($start_date, $end_date, $file);
 	} elseif($form_state['clicked_button']['#parents'][0] == 'download_state') {
 		if($form_state['values']['start_date']) {
 			$start_date = strtotime($form_state['values']['start_date']);

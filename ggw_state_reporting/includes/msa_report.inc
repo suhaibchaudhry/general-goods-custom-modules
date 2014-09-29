@@ -1,7 +1,24 @@
 <?php
-function ggw_state_reporting_download_msa($start_date, $end_date) {
+function ggw_state_reporting_download_msa($start_date, $end_date, $file) {
 	//header("Content-Type: text/plain");
 	header('Content-disposition: attachment;filename=weekly_msa_report.txt');
+
+	$existing_msa = false;
+	if($file) {
+		$existing_msa = true;
+		$report_contents = file_get_contents($file->filepath);
+		$existing_msa_items = array();
+
+		$matches = array();
+		preg_match_all('/BID(.*)/', $report_contents, $matches); 
+		foreach($matches[0] as $match) {
+			$index = substr($match, 0, 31);
+			$existing_msa_items[$index] = array(
+				'item_line' => $match,
+				'quantity' => doubleval(substr($match, 250, 11))
+			);
+		}
+	}
 
 	$company = 'GENERAL GOODS WHOLESALE';
 	$address = '8000 HARWIN, SUITE 200 HOUSTON, TX 77036';
@@ -32,7 +49,7 @@ function ggw_state_reporting_download_msa($start_date, $end_date) {
 	$total_amount = 0;
 	$total_qty = 0;
 
-	$report .= ggw_state_reporting_msa_get_inventory_report($total_products);
+	$report .= ggw_state_reporting_msa_get_inventory_report($total_products, $existing_msa, $existing_msa_items);
 	$report .= ggw_msa_generate_customer_report($start_date, $end_date, $total_customers, $total_purchases, $total_amount, $total_qty);
 
 	//Totals
@@ -140,7 +157,7 @@ function ggw_msa_generate_customer_report($start_date, $end_date, &$total_custom
 	 return $report;
 }
 
-function ggw_state_reporting_msa_get_inventory_report(&$total_products) {
+function ggw_state_reporting_msa_get_inventory_report(&$total_products, $existing_msa = false, $existing_msa_items = array()) {
 	$sql = "SELECT n.nid, n.title, up.model, ctp.field_prod_packing_value, ctp.field_msa_discount_remarks_value, ctp.field_prod_form_value, sr.vid as tid, sr.msa_cat FROM uc_products up
 			INNER JOIN term_node tn ON up.nid = tn.nid
  			INNER JOIN node n ON up.nid = n.nid
@@ -154,13 +171,15 @@ function ggw_state_reporting_msa_get_inventory_report(&$total_products) {
 
 	$products_array = array();
 	while($product = db_fetch_object($products)) {
+		$product->msa_barcode = $bid.ggw_state_reporting_msa_cell($product->model, 12, STR_PAD_LEFT);
+		$product->msa_barcode .= '00'.ggw_state_reporting_msa_cell($product->model, 12, STR_PAD_LEFT, '0');
+
 		$products_array[] = $product;
 	}
 
 	foreach($products_array as $product) {
 		$total_products++;
-		$content .= $bid.ggw_state_reporting_msa_cell($product->model, 12, STR_PAD_LEFT);
-		$content .= '00'.ggw_state_reporting_msa_cell($product->model, 12, STR_PAD_LEFT, '0');
+		$content .= $product->msa_barcode;
 		
 		if($product->field_prod_packing_value) {
 			$content .= ggw_state_reporting_msa_cell(stripslashes($product->title), 26);
@@ -192,6 +211,12 @@ function ggw_state_reporting_msa_get_inventory_report(&$total_products) {
 
 		$status = pos_stock_management_status($product->nid);
 		$quantity_on_hand = $status['quantity'];
+
+		if($existing_msa && array_key_exists($product->msa_barcode, $existing_msa_items)) {
+			$quantity_on_hand += $existing_msa_items[$product->msa_barcode]['quantity'];
+			unset($existing_msa_items[$product->msa_barcode]);
+		}
+
 		if($quantity_on_hand < 0) {
 			$content .= '-';
 		} else {
@@ -202,7 +227,13 @@ function ggw_state_reporting_msa_get_inventory_report(&$total_products) {
 		$content .= ggw_state_reporting_msa_cell($padded_qty, 10, STR_PAD_LEFT, '0');
 
 		$content .= "\r\n";
-		//$total_products++;
+	}
+
+
+	if($existing_msa) {
+		foreach($existing_msa_items as $existing_item) {
+			$content .= $existing_item['item_line'];
+		}
 	}
 
 	return $content;
