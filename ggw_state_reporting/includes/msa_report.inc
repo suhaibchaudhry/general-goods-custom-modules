@@ -70,7 +70,7 @@ function ggw_msa_generate_customer_report($start_date, $end_date, &$total_custom
 	 	$first_digit = $user->name;
 	 	if(is_numeric($first_digit{0})) {
 	 		$first_part = 'W'.substr($user->name, 0, 5);
-	 		$second_part = 'W'.substr($user->name, 0, -5);
+	 		$second_part = 'W'.substr($user->name, -5);
 	 	} else {
 	 		$first_part = $user->name;
 	 		$second_part = $user->name;
