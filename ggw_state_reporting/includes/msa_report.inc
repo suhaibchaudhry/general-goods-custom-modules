@@ -8,14 +8,32 @@ function ggw_state_reporting_download_msa($start_date, $end_date, $file) {
 		$existing_msa = true;
 		$report_contents = file_get_contents($file->filepath);
 		$existing_msa_items = array();
+		$existing_msa_custs = array();
+		$existing_msa_pur = array();
 
 		$matches = array();
-		preg_match_all('/BID(.*)/', $report_contents, $matches); 
+		preg_match_all('/^BID(.*)/m', $report_contents, $matches); 
 		foreach($matches[0] as $match) {
 			$index = substr($match, 0, 31);
 			$existing_msa_items[$index] = array(
 				'item_line' => $match,
 				'quantity' => doubleval(substr($match, 250, 11))
+			);
+		}
+
+		preg_match_all('/^SID(.*)$/m', $report_contents, $matches);
+		foreach($matches[0] as $match) {
+			$index = substr($match, 3, 24);
+			$existing_msa_custs[$index] = $match;
+		}
+
+		preg_match_all('/^PUR(.*)$/m', $report_contents, $matches);
+		foreach($matches[0] as $match) {
+			$index = substr($match, 3, 24);
+			$existing_msa_pur[$index][] = array(
+				'item_line' => $match,
+				'quantity' => doubleval(substr($match, 105, 8)),
+				'price' => doubleval(substr($match, 119))
 			);
 		}
 	}
@@ -50,7 +68,7 @@ function ggw_state_reporting_download_msa($start_date, $end_date, $file) {
 	$total_qty = 0;
 
 	$report .= ggw_state_reporting_msa_get_inventory_report($total_products, $existing_msa, $existing_msa_items);
-	$report .= ggw_msa_generate_customer_report($start_date, $end_date, $total_customers, $total_purchases, $total_amount, $total_qty);
+	$report .= ggw_msa_generate_customer_report($start_date, $end_date, $total_customers, $total_purchases, $total_amount, $total_qty, $existing_msa, $existing_msa_custs, $existing_msa_pur);
 
 	//Totals
 	$report .= 'TOT14047001'.$end_date_r.ggw_state_reporting_msa_cell($total_products, 8, STR_PAD_LEFT, '0');
@@ -70,7 +88,8 @@ function ggw_state_reporting_download_msa($start_date, $end_date, $file) {
 	print $report;
 }
 
-function ggw_msa_generate_customer_report($start_date, $end_date, &$total_customers, &$total_purchases, &$total_amount, &$total_qty) {
+function ggw_msa_generate_customer_report($start_date, $end_date, &$total_customers, &$total_purchases, &$total_amount, &$total_qty, $existing_msa = false, $existing_msa_custs = array(), $existing_msa_pur = array()) {
+
 	$report = '';
 
 	$customers = db_query("SELECT uo.uid, uo.order_status, GROUP_CONCAT(DISTINCT uo.order_id ORDER BY uo.order_id ASC SEPARATOR ',') AS tickets FROM {uc_orders} uo
@@ -93,9 +112,6 @@ function ggw_msa_generate_customer_report($start_date, $end_date, &$total_custom
 	 		$second_part = $user->name;
 	 	}
 
-	 	$first_part = $first_part;
-	 	$second_part = $second_part;
-
 	 	$purchases = db_query("SELECT op.nid, SUM(op.qty) AS quantity, SUM(op.qty*op.price) AS price, op.model FROM uc_order_products op
 	 		INNER JOIN term_node tn ON op.nid = tn.nid
 	 		INNER JOIN ggw_state_reporting_terms sr ON sr.vid = tn.tid
@@ -106,8 +122,10 @@ function ggw_msa_generate_customer_report($start_date, $end_date, &$total_custom
 	 		if(!isset($customers_displayed[$customer->uid])) {
 	 			$total_customers++;
 			 	$report .= 'SID';
-			 	$report .= ggw_state_reporting_msa_cell($first_part, 8);
-			 	$report .= ggw_state_reporting_msa_cell($second_part, 16);
+			 	$user = ggw_state_reporting_msa_cell($first_part, 8);
+			 	$user .= ggw_state_reporting_msa_cell($second_part, 16);
+
+			 	$report .= $user;
 
 			 	$report .= ggw_state_reporting_msa_cell($profile_node->title, 40);
 			 	$report .= ggw_state_reporting_msa_cell($profile->field_company_address_street1.' '.$profile->field_company_address_street2, 90);
@@ -119,6 +137,18 @@ function ggw_msa_generate_customer_report($start_date, $end_date, &$total_custom
 			 	$report .= 'Y'."\r\n";
 
 			 	$customers_displayed[$customer->uid] = true;
+
+			 	if($existing_msa && array_key_exists($user, $existing_msa_custs)) {
+			 		foreach($existing_msa_pur[$user] as $purchase) {
+			 			$report .= $purchase['item_line'];
+			 			$total_qty += $purchase['quantity'];
+			 			$total_amount += $purchase['price'];
+			 			$total_purchases++;
+			 		}
+
+			 		unset($existing_msa_custs[$user]);
+			 		unset($existing_msa_pur[$user]);
+			 	}
 	 		}
 
 	 		$report .= 'PUR';
@@ -152,6 +182,19 @@ function ggw_msa_generate_customer_report($start_date, $end_date, &$total_custom
 	 		$report .= ggw_state_reporting_msa_cell(number_format($purchase->price, 2, '.', ''), 7, STR_PAD_LEFT, '0');
 	 		$report .= "\r\n";
 	 	}
+	 }
+
+	 if($existing_msa) {
+		foreach($existing_msa_custs as $cust_key => $existing_cust) {
+			$report .= $existing_cust;
+			$total_customers++;
+			foreach($existing_msa_pur[$cust_key] as $cust_purchase) {
+				$report .= $cust_purchase['item_line'];
+				$total_qty += $purchase['quantity'];
+			 	$total_amount += $purchase['price'];
+			 	$total_purchases++;
+			}
+		}
 	 }
 
 	 return $report;
