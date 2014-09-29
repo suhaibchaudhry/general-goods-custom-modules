@@ -19,7 +19,7 @@ function ggw_state_reporting_download_msa($start_date, $end_date) {
 
 	//MSA Report Header
 	$report .= ggw_state_reporting_msa_cell('HID'.$msa_number.'TOB', 16);
-	$report .= ggw_state_reporting_msa_cell('W'.$start_date_r.$company, 41);
+	$report .= ggw_state_reporting_msa_cell('W'.$end_date_r.$company, 41);
 	$report .= ggw_state_reporting_msa_cell($address, 90);
 	$report .= ggw_state_reporting_msa_cell('TOBACO ID: '.$tobacco_id, 84);
 	$report .= ggw_state_reporting_msa_cell($phone, 15);
