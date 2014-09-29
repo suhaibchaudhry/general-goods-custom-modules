@@ -76,6 +76,9 @@ function ggw_msa_generate_customer_report($start_date, $end_date, &$total_custom
 	 		$second_part = $user->name;
 	 	}
 
+	 	$first_part = strtoupper($first_part);
+	 	$second_part = strtoupper($second_part);
+
 	 	$purchases = db_query("SELECT op.nid, SUM(op.qty) AS quantity, SUM(op.qty*op.price) AS price, op.model FROM uc_order_products op
 	 		INNER JOIN term_node tn ON op.nid = tn.nid
 	 		INNER JOIN ggw_state_reporting_terms sr ON sr.vid = tn.tid
