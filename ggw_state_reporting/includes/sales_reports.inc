@@ -568,16 +568,31 @@ function pos_api_expose_clear_dp_form() {
 }
 
 function pos_api_expose_clear_dp_form_submit($form_state) {
-	$tickets = db_query("SELECT order_id FROM uc_orders WHERE billing_zone = '1'");
-	while($ticket = db_fetch_object($tickets)) {
-		uc_order_delete($ticket->order_id);
+	if($_GET['start_date']) {
+		$start_date = strtotime($_GET['start_date']['date'].' '.$_GET['start_date']['time']);
+	} else {
+		$start_date = mktime(7, 0, 0);
 	}
 
-	db_query("DELETE FROM {pos_api_expose_cash_log_dp} WHERE 1");
-	db_query("DELETE FROM {pos_api_expose_credit_card_log_dp} WHERE 1");
-	db_query("DELETE FROM {pos_api_expose_check_log_dp} WHERE 1");
-	db_query("DELETE FROM {pos_api_expose_money_order_log_dp} WHERE 1");
-	db_query("DELETE FROM {pos_api_expose_transaction_log_dp} WHERE 1");
+	if($_GET['end_date']) {
+		$end_date = strtotime($_GET['end_date']['date'].' '.$_GET['end_date']['time']);
+	} else {
+		$end_date = mktime(22, 0, 0);
+	}
+
+	$tickets = db_query("SELECT tl.ticket_id FROM {pos_api_expose_transaction_log_dp} tl WHERE tl.timestamp >= '%s' AND tl.timestamp <= '%s'", $start_date, $end_date);
+	while($ticket = db_fetch_object($tickets)) {
+		uc_order_delete($ticket->ticket_id);
+		$transacs = db_query("SELECT tl.pid, tl.cash_pid, tl.cc_pid, tl.check_pid, tl.mo_pid FROM {pos_api_expose_transaction_log_dp} tl WHERE tl.ticket_id = '%d'", $ticket->ticket_id);
+
+		while($transac = db_fetch_object($transacs)) {
+			db_query("DELETE FROM {pos_api_expose_cash_log_dp} WHERE pid = '%d'", $transac->cash_pid);
+			db_query("DELETE FROM {pos_api_expose_credit_card_log_dp} WHERE pid = '%d'", $transac->cc_pid);
+			db_query("DELETE FROM {pos_api_expose_check_log_dp} WHERE pid = '%d'", $transac->check_pid);
+			db_query("DELETE FROM {pos_api_expose_money_order_log_dp} WHERE pid = '%d'", $transac->mo_pid);
+			db_query("DELETE FROM {pos_api_expose_transaction_log_dp} WHERE pid = '%d'", $transac->pid);
+		}
+	}
 
 	drupal_set_message("DP tickets were successfully removed.");
 }
