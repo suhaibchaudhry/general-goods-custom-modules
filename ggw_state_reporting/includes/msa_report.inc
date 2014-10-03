@@ -16,7 +16,7 @@ function ggw_state_reporting_download_msa($start_date, $end_date, $file) {
 		foreach($matches[0] as $match) {
 			$index = substr($match, 0, 31);
 			$existing_msa_items[$index] = array(
-				'item_line' => $match,
+				'item_line' => trim($match)."\r\n",
 				'quantity' => doubleval(trim(substr($match, 250, 11)))
 			);
 		}
@@ -31,7 +31,7 @@ function ggw_state_reporting_download_msa($start_date, $end_date, $file) {
 		foreach($matches[0] as $match) {
 			$index = substr($match, 3, 24);
 			$existing_msa_pur[$index][] = array(
-				'item_line' => $match,
+				'item_line' => trim($match)."\r\n",
 				'quantity' => trim(substr($match, 105, 8)),
 				'price' => trim(substr($match, 119))
 			);
