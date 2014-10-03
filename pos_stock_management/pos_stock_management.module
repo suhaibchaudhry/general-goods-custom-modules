@@ -71,6 +71,15 @@ function pos_stock_management_menu() {
     'file' => 'includes/pos_stock_management.admin.inc'
   );
 
+  $items['pos-api/inventory/list'] = array(
+    'title' => 'Inventory Adjustments',
+    'description' => 'Creates a list of inventory adjustments.',
+    'page callback' => 'pos_stock_management_inventory_list',
+    'access arguments' => array('access content'),
+    'type' => MENU_CALLBACK,
+    'file' => 'includes/inventory.route.inc'
+  );
+
   return $items;
 }
 
