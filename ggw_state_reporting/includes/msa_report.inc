@@ -276,6 +276,7 @@ function ggw_state_reporting_msa_get_inventory_report(&$total_products, $existin
 	if($existing_msa) {
 		foreach($existing_msa_items as $existing_item) {
 			$content .= $existing_item['item_line'];
+			$total_products++;
 		}
 	}
 
