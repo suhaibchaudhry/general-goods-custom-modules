@@ -124,15 +124,16 @@ function pos_stock_management_history($nid) {
 	$predicates = array('No', 'Yes');
 	$sql = "SELECT * FROM {pos_in_stock_management} pism LEFT JOIN {users} u ON pism.vendor_uid = u.uid LEFT JOIN {node} n on u.uid = n.uid WHERE pism.product_nid = %d ORDER BY pism.se_id DESC";
 	$stock_histories = db_query($sql, $nid);
-	
-	$header = array('Quantity Purchased', 'Vendor', 'Purchase Unit Cost', 'Date', 'Reset', 'Notes');
-	$data = array();
+	$products = array();
+	$header = array('Quantity Purchased', 'Vendor', 'Purchase Unit Cost', 'Date', 'Reset', 'Notes', 'Qty After');
+
 	while($stock_history = db_fetch_object($stock_histories)) {
 		if($stock_history->uid == 0) {
 			$user = 'n/a';
 		} else {
 			$user = l($stock_history->title, 'user/'.$stock_history->uid, array('attributes' => array('target' => '_new')));	
 		}
+
 		$data[] = array($stock_history->stock_adjustment,
       $user, 	
       uc_currency_format($stock_history->unit_cost),
@@ -141,6 +142,21 @@ function pos_stock_management_history($nid) {
       $stock_history->stock_comment
     );
 	}
+
+  $i = count($data)-1;
+  $qty_total = array();
+  $qty_total[$nid] = 0;
+
+  while($i >= 0) {
+    if($data[$i][4] == 'No') {
+      $qty_total[$nid] += $data[$i][0];
+    } else {
+      $qty_total[$nid] = $data[$i][0];
+    }
+
+    $data[$i][6] = $qty_total[$nid];
+    $i--;
+  }
 	
 	$content .= theme('table', $header, $data);
 	return $content;
