@@ -80,6 +80,15 @@ function pos_stock_management_menu() {
     'file' => 'includes/inventory.route.inc'
   );
 
+  $items['pos-api/inventory/lookup'] = array(
+    'title' => 'Product Lookup',
+    'description' => 'Search for products by a nid.',
+    'page callback' => 'pos_stock_management_lookup',
+    'access arguments' => array('access content'),
+    'type' => MENU_CALLBACK,
+    'file' => 'includes/inventory.route.inc'
+  );
+
   return $items;
 }
 
@@ -121,27 +130,36 @@ function pos_stock_management_history($nid) {
   $status = pos_stock_management_status($nid);
 	$content .= '<p class="stock-status"><strong>Quantity on Hand:</strong> '.$status['quantity'].'</p>';
 	$content .= '<p class="stock-status"><strong>Average Purchase Unit Cost:</strong> '.uc_currency_format($status['cost']).'</p>';
-	$predicates = array('No', 'Yes');
-	$sql = "SELECT * FROM {pos_in_stock_management} pism LEFT JOIN {users} u ON pism.vendor_uid = u.uid LEFT JOIN {node} n on u.uid = n.uid WHERE pism.product_nid = %d ORDER BY pism.se_id DESC";
-	$stock_histories = db_query($sql, $nid);
-	$products = array();
-	$header = array('Quantity Purchased', 'Vendor', 'Purchase Unit Cost', 'Date', 'Reset', 'Notes', 'Qty After');
+	
+  $header = array('Quantity Purchased', 'Vendor', 'Purchase Unit Cost', 'Date', 'Reset', 'Notes', 'Qty After');
 
-	while($stock_history = db_fetch_object($stock_histories)) {
-		if($stock_history->uid == 0) {
-			$user = 'n/a';
-		} else {
-			$user = l($stock_history->title, 'user/'.$stock_history->uid, array('attributes' => array('target' => '_new')));	
-		}
+  $data = _pos_stock_management_item_history($nid);
 
-		$data[] = array($stock_history->stock_adjustment,
-      $user, 	
+	$content .= theme('table', $header, $data);
+	return $content;
+}
+
+function _pos_stock_management_item_history($nid) {
+  $predicates = array('No', 'Yes');
+  $sql = "SELECT * FROM {pos_in_stock_management} pism LEFT JOIN {users} u ON pism.vendor_uid = u.uid LEFT JOIN {node} n on u.uid = n.uid WHERE pism.product_nid = %d ORDER BY pism.se_id DESC";
+  $stock_histories = db_query($sql, $nid);
+  $products = array();
+
+  while($stock_history = db_fetch_object($stock_histories)) {
+    if($stock_history->uid == 0) {
+      $user = 'n/a';
+    } else {
+      $user = l($stock_history->title, 'user/'.$stock_history->uid, array('attributes' => array('target' => '_new')));  
+    }
+
+    $data[] = array($stock_history->stock_adjustment,
+      $user,  
       uc_currency_format($stock_history->unit_cost),
       date('n/j/Y', $stock_history->timestamp),
       $predicates[$stock_history->reset],
       $stock_history->stock_comment
     );
-	}
+  }
 
   $i = count($data)-1;
   $qty_total = array();
@@ -157,9 +175,8 @@ function pos_stock_management_history($nid) {
     $data[$i][6] = $qty_total[$nid];
     $i--;
   }
-	
-	$content .= theme('table', $header, $data);
-	return $content;
+
+  return $data;
 }
 
 function pos_stock_management_vendors($nid) {
