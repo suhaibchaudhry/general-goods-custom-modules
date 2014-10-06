@@ -89,6 +89,15 @@ function pos_stock_management_menu() {
     'file' => 'includes/inventory.route.inc'
   );
 
+  $items['pos-api/inventory/get-form'] = array(
+    'title' => 'Get Inventory Form',
+    'description' => 'Get inventory form for a nid.',
+    'page callback' => 'pos_stock_management_get_form_plain',
+    'access arguments' => array('access content'),
+    'type' => MENU_CALLBACK,
+    'file' => 'includes/inventory.route.inc'
+  );
+
   return $items;
 }
 
