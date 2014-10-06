@@ -70,3 +70,100 @@ function pos_stock_management_lookup() {
 
 	pos_api_expose_respond($failed_response);
 }
+
+function pos_stock_management_get_form_plain() {
+	$failed_response = array(
+		'status' => false,
+		'error' => 'Could not load inventory form.'
+	);
+
+	if(array_key_exists('request', $_POST)) {
+		$request = json_decode($_POST['request']);
+		$token = $request->token;
+		$product_nid = trim($request->product_nid);
+
+		$uid = _pos_api_expose_uid_from_token($token);
+		if($uid) {
+			if($product_nid) {
+				$node = node_load($product_nid);
+				$form_markup = drupal_get_form('pos_stock_management_edit_plain_form', $node);
+
+				pos_api_expose_respond(array(
+					'status' => true,
+					'form_markup' => $form_markup
+				), true);
+			} else {
+				pos_api_expose_respond($failed_response, true);
+			}
+		}
+	}
+
+	pos_api_expose_respond($failed_response);
+}
+
+function pos_stock_management_edit_plain_form($form_state, $node) {
+  $form = array();
+  
+  $form['nid'] = array(
+  	'#type' => 'value',
+	'#value' => $node->nid
+  );
+
+  $form['new_stock'] = array(
+	'#type' => 'fieldset',
+	'#title' => t('New Stock Addition'), 
+	'#collapsible' => FALSE
+  );
+  
+  $form['new_stock']['vendor'] = array(
+	'#type' => 'select',
+	'#title' => t('Supplying Vendor'), 
+	'#default_value' => 0,
+	'#options' => pos_stock_management_vendors($node->nid)
+  );
+  
+  $form['new_stock']['quantity_purchased'] = array(
+  	'#type' => 'textfield',
+	'#title' => t('Quantity Purchased'), 
+	'#size' => 9,
+	'#maxlength' => 9,
+	'#required' => TRUE
+  );
+
+  $form['new_stock']['unit_cost'] = array(
+  	'#type' => 'textfield', 
+	'#title' => t('Unit Cost'), 
+	'#size' => 20,
+	'#maxlength' => 128,
+	'#required' => TRUE
+  );
+  
+  $form['new_stock']['stock_comment'] = array(
+  	'#type' => 'textarea',
+	'#title' => t('Stock Comment')
+  );
+
+  $form['new_stock']['reset'] = array(
+  	'#type' => 'checkbox',
+  	'#default_value' => 0,
+  	'#title' => t('Reset Stock')
+  );
+  
+  $form['new_stock']['add'] = array(
+  	'#type' => 'submit',
+	'#value' => t('Add To Stock')
+  );
+  
+  $form['stock_history'] = array(
+	'#type' => 'fieldset',
+	'#title' => t('Stock Status and History'), 
+	'#collapsible' => FALSE
+  );
+  
+  $form['stock_history']['purchase_table'] = array(
+  	'#type' => 'markup',
+	'#value' => pos_stock_management_history($node->nid)
+  );
+
+  return $form;
+}
