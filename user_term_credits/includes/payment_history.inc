@@ -228,7 +228,7 @@ function utc_payment_history($user, $themeless = false) {
 				$stash = db_fetch_object(db_query("SELECT `change`, stashed FROM user_term_credits_cash_log WHERE sid = '%d'", $settlement->sid));
 				if($stash->stashed) {	
 					if($components[0] == 'CHANGE') {
-						$stashed_rma_change = bcadd($stash->change, $stashed_rma_change, 6);
+						$stashed_rma_change = bcadd(trim($stash->change), trim($stashed_rma_change), 6);
 						$column_1 .= 'RMA SENT ';
 					}
 				}
@@ -403,7 +403,7 @@ function utc_customer_statement($user, $themeless = false) {
 				$stash = db_fetch_object(db_query("SELECT `change`, stashed FROM user_term_credits_cash_log WHERE sid = '%d'", $settlement->sid));
 				if($stash->stashed) {
 					if($components[0] == 'CHANGE') {
-						$stashed_rma_change = bcadd($stash->change, $stashed_rma_change, 6);
+						$stashed_rma_change = bcadd(trim($stash->change), trim($stashed_rma_change), 6);
 						$column_1 .= 'RMA SENT ';
 					}
 				}
@@ -492,7 +492,7 @@ function utc_customer_statement($user, $themeless = false) {
 	$balance = $start_credits->pending_payments;
 	foreach($transaction_bucket as $transaction) {
 		if($transaction['type'] == 'invoice') {
-			$balance = bcadd($balance, $transaction['amount'], 6);
+			$balance = bcadd(trim($balance), trim($transaction['amount']), 6);
 
 			if($transaction['settled'] == '0') {
 				$row = array(
@@ -552,10 +552,10 @@ function utc_customer_statement($user, $themeless = false) {
 			foreach($transaction['payment'] as $method) {
 				$column_2 .= uc_currency_format(user_term_credits_recursive_round($method)).'<br />';
 				if($transaction['method'][$i] == 'CHANGE' || $transaction['method'][$i] == 'RMA SENT CHANGE') {
-					$balance = bcadd($balance, $method, 6);
+					$balance = bcadd(trim($balance), trim($method), 6);
 					$bal_col .= uc_currency_format(user_term_credits_recursive_round($balance)).'<br />';
 				} else {
-					$balance = bcsub($balance, $method, 6);
+					$balance = bcsub(trim($balance), trim($method), 6);
 					if($transaction['method'][$i] == 'CASH' && in_array('CHANGE', $transaction['method']) || in_array('RMA SENT CHANGE', $transaction['method'])) {
 						$bal_col .= '<br />';
 					} else {
@@ -639,21 +639,21 @@ function utc_customer_activity_report() {
 		$start_account = _user_term_credits_getCredits($customer->customer_uid, $date);
 		$end_account = _user_term_credits_getCredits($customer->customer_uid, $end_date);
 
-		$total_previous = bcadd($total_previous, $start_account->pending_payments, 6);
-		$current_outstanding = bcadd($current_outstanding, $end_account->pending_payments, 6);
+		$total_previous = bcadd(trim($total_previous), trim($start_account->pending_payments), 6);
+		$current_outstanding = bcadd(trim($current_outstanding), trim($end_account->pending_payments), 6);
 
 		$receipt_amount = db_result(db_query("SELECT SUM(tl.amount)
 				 			FROM {pos_api_expose_transaction_log} tl 
 				 			WHERE tl.credit_usage_id <> 0 AND tl.timestamp >= '%s' AND tl.timestamp <= '%s' AND tl.cuid = '%d'", $date, $end_date, $customer->customer_uid));
 
 		if($receipt_amount) {
-			$total_receipt = bcadd($total_receipt, $receipt_amount, 6);
+			$total_receipt = bcadd(trim($total_receipt), trim($receipt_amount), 6);
 		}
 
 		$payment_amount = db_result(db_query("SELECT SUM(s.settlement_amount) FROM user_term_credits_settlements s LEFT JOIN user_term_credits_usages u ON s.cuid = u.cuid WHERE s.settlement_date >= '%s' AND s.settlement_date <= '%s' AND u.uid = '%d' GROUP BY u.uid", $date, $end_date, $customer->customer_uid));
 
 		if($payment_amount) {
-			$total_payment = bcadd($total_payment, $payment_amount, 6);
+			$total_payment = bcadd(trim($total_payment), trim($payment_amount), 6);
 		}
 
 		$tax_amount = db_result(db_query("SELECT SUM(ucl.amount)
@@ -662,7 +662,7 @@ function utc_customer_activity_report() {
 				 			WHERE tl.credit_usage_id <> 0 AND tl.timestamp >= '%s' AND tl.timestamp <= '%s' AND tl.cuid = '%d'", $date, $end_date, $customer->customer_uid));
 
 		if($tax_amount) {
-			$total_tax = bcadd($total_tax, $tax_amount, 6);
+			$total_tax = bcadd(trim($total_tax), trim($tax_amount), 6);
 		}
 
 		if($receipt_amount) {
