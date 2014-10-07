@@ -71,6 +71,36 @@ function pos_stock_management_lookup() {
 	pos_api_expose_respond($failed_response);
 }
 
+function pos_stock_management_inventory_add_stock() {
+	$failed_response = array(
+		'status' => false,
+		'error' => 'Could not submit inventory form.'
+	);
+
+	if(array_key_exists('request', $_POST)) {
+		$request = json_decode($_POST['request']);
+		$token = $request->token;
+		$product_nid = $request->product_nid;
+		$quantity_purchased = $request->quantity_purchased;
+		$vendor = $request->vendor;
+		$unit_cost = $request->unit_cost;
+		$stock_comment = $request->stock_comment;
+		$reset = $request->reset;
+
+		$uid = _pos_api_expose_uid_from_token($token);
+		if($uid) {
+			db_query("INSERT INTO {pos_in_stock_management} (product_nid, stock_adjustment, vendor_uid, unit_cost, stock_comment, reset, `timestamp`) VALUES (%d, %d, %d, '%s', '%s', %d, '%s')", $request->product_nid, $request->quantity_purchased, $request->vendor, $request->unit_cost, $request->stock_comment, $request->reset, time());
+
+			pos_api_expose_respond(array(
+					'status' => true,
+					'message' => 'Stock has been updated successfully.'
+				), true);
+		}
+	}
+
+	pos_api_expose_respond($failed_response);
+}
+
 function pos_stock_management_get_form_plain() {
 	$failed_response = array(
 		'status' => false,

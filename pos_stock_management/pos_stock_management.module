@@ -98,6 +98,15 @@ function pos_stock_management_menu() {
     'file' => 'includes/inventory.route.inc'
   );
 
+  $items['pos-api/inventory/add-stock'] = array(
+    'title' => 'Add stock inventory callback.',
+    'description' => 'Populate inventory for an item.',
+    'page callback' => 'pos_stock_management_inventory_add_stock',
+    'access arguments' => array('access content'),
+    'type' => MENU_CALLBACK,
+    'file' => 'includes/inventory.route.inc'
+  );
+
   return $items;
 }
 
