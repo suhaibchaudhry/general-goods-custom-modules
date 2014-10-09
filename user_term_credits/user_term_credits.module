@@ -421,7 +421,7 @@ function _user_term_credits_getCredits($uid, $history_before = false) {
 	$credits = db_fetch_object(db_query("SELECT utcl.credit_limit, utcl.term_limit, utcl.term_note FROM {user_term_credits_limits} utcl WHERE utcl.uid = %d", $uid));
 	
 	if(empty($credits->credit_limit)) {
-		$credit = new stdClass();
+		$credits = new stdClass();
 		$credits->credit_limit = 0;
 	}/* else {
 		$credits->credit_limit = (float)$credits->credit_limit;
