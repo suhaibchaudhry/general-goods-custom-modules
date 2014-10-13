@@ -96,8 +96,8 @@ function utc_invoice_history($user, $themeless = false) {
 
 	$invoices = db_query("SELECT tl.pid, tl.timestamp, tl.credit_usage_id, tl.ticket_id, tl.amount, cu.due_date
 				 			FROM {pos_api_expose_transaction_log} tl
-				 			INNER JOIN user_term_credits_usages cu ON tl.credit_usage_id = cu.cuid 
-				 			WHERE tl.credit_usage_id <> 0 AND tl.timestamp >= '%s' AND tl.timestamp <= '%s' AND tl.cuid = '%d'", $date, $end_date, $user->uid);
+				 			LEFT JOIN user_term_credits_usages cu ON tl.credit_usage_id = cu.cuid 
+				 			WHERE tl.timestamp >= '%s' AND tl.timestamp <= '%s' AND tl.cuid = '%d'", $date, $end_date, $user->uid);
 
 	$header = array('Type', 'Invoice #', 'Ticket #', 'Date', 'Inv. Total', 'Balance', 'Due Date');
 	$data = array();
@@ -353,14 +353,15 @@ function utc_customer_statement($user, $themeless = false) {
 	$content .= '<pre>'.str_pad('Beginning Balance', 70, '. ').$start_credits->pending_payments_view.'</pre>';
 
 	$transaction_bucket = array();
-	$invoices = db_query("SELECT tl.pid, tl.timestamp, tl.credit_usage_id, tl.ticket_id, cu.credit_amount AS amount, cu.due_date, cu.settled
+	$invoices = db_query("SELECT tl.pid, tl.timestamp, tl.credit_usage_id, tl.ticket_id, cu.credit_amount AS amount, tl.amount as full_amount, cu.due_date, cu.settled
 				 			FROM {pos_api_expose_transaction_log} tl
-				 			INNER JOIN user_term_credits_usages cu ON tl.credit_usage_id = cu.cuid 
-				 			WHERE tl.credit_usage_id <> 0 AND tl.timestamp >= '%s' AND tl.timestamp <= '%s' AND tl.cuid = '%d'", $date, $end_date, $user->uid);
+				 			LEFT JOIN user_term_credits_usages cu ON tl.credit_usage_id = cu.cuid 
+				 			WHERE tl.timestamp >= '%s' AND tl.timestamp <= '%s' AND tl.cuid = '%d'", $date, $end_date, $user->uid);
 	while($invoice = db_fetch_object($invoices)) {
 		$transaction_bucket[] = array(
 			'type' => 'invoice',
 			'timestamp' => $invoice->timestamp,
+			'full_amount' => $invoice->full_amount,
 			'amount' => $invoice->amount,
 			'invoice_id' => $invoice->pid,
 			'ticket_id' => $invoice->ticket_id,
@@ -498,7 +499,7 @@ function utc_customer_statement($user, $themeless = false) {
 				$row = array(
 					$transaction['invoice_id'].'/'.l($transaction['ticket_id'], 'admin/store/orders/'.$transaction['ticket_id']),
 					date('n/j/Y', $transaction['timestamp']),
-					uc_currency_format(user_term_credits_recursive_round($transaction['amount'])),
+					uc_currency_format(user_term_credits_recursive_round($transaction['full_amount'])),
 					date('n/j/Y', $transaction['due_date']),
 					'',
 					'',
@@ -537,7 +538,7 @@ function utc_customer_statement($user, $themeless = false) {
 			$rows[] = array(
 				date('n/j/Y', $transaction['timestamp']),
 				$transaction['invoice_id'].'/'.l($transaction['ticket_id'], 'admin/store/orders/'.$transaction['ticket_id']),
-				uc_currency_format(user_term_credits_recursive_round($transaction['amount'])),
+				uc_currency_format(user_term_credits_recursive_round($transaction['full_amount'])),
 				'',
 				uc_currency_format(user_term_credits_recursive_round($balance))
 			);
