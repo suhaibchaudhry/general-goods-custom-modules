@@ -12,7 +12,7 @@ function ggw_mobile_orders_menu() {
 		'type' => MENU_NORMAL_ITEM,
 		'title' => 'Mobile Order Details',
 		'description' => 'Display mobile order.',
-		'page callback' => 'ggw_mobile_orders_order',
+		'page callback' => 'ggw_mobile_orders_order_unhook',
 		'page arguments' => array(2),
 		'access arguments' => array('view all orders')
 	);
@@ -77,7 +77,7 @@ function ggw_mobile_orders_dashboard() {
 	return $content;
 }
 
-function ggw_mobile_orders_order($oid) {
+function ggw_mobile_orders_order_unhook($oid) {
 	drupal_add_css(drupal_get_path('module','ggw_mobile_orders').'/css/ggw_mobile_orders.css');
 	$q = $_GET['q'];
 	unset($_GET['q']); //Remove drupal q query
