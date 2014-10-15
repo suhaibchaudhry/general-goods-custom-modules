@@ -447,6 +447,11 @@ function ggw_state_reporting_date_range_form($form_state, $path = false, $dp = t
 		    '#description' => t('Upload an existing report to merge with (Extensions: txt or TXT)')
 		);
 
+		$form['force_inventory'] = array(
+			'#type' => 'checkbox',
+			'#title' => t('Force Positive Inventory')
+		);
+
 		$form['download_msa'] = array(
 			'#type' => 'submit',
 			'#value' => 'Download MSA Report'
@@ -508,7 +513,7 @@ function ggw_state_reporting_date_range_form_submit($form, $form_state) {
 			array('file_validate_extensions' => array('TXT', 'txt'))
 		);
 
-		ggw_state_reporting_download_msa($start_date, $end_date, $file);
+		ggw_state_reporting_download_msa($start_date, $end_date, $file, $form_state['values']['force_inventory']);
 	} elseif($form_state['clicked_button']['#parents'][0] == 'download_state') {
 		if($form_state['values']['start_date']) {
 			$start_date = strtotime($form_state['values']['start_date']);

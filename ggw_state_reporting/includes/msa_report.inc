@@ -1,5 +1,5 @@
 <?php
-function ggw_state_reporting_download_msa($start_date, $end_date, $file) {
+function ggw_state_reporting_download_msa($start_date, $end_date, $file, $force_positive = false) {
 	//header("Content-Type: text/plain");
 	header('Content-disposition: attachment;filename=weekly_msa_report.txt');
 
@@ -269,10 +269,14 @@ function ggw_state_reporting_msa_get_inventory_report(&$total_products, $existin
 			unset($existing_msa_items[$product->msa_barcode]);
 		}
 
-		if($quantity_on_hand < 0) {
-			$content .= '-';
-		} else {
+		if($force_positive) {
 			$content .= ' ';
+		} else {
+			if($quantity_on_hand < 0) {
+				$content .= '-';
+			} else {
+				$content .= ' ';
+			}
 		}
 
 		$padded_qty = number_format(abs($quantity_on_hand), 2, '.', '');
