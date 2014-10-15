@@ -29,6 +29,12 @@ function ggw_state_reporting_schema() {
 				'description' => "Reported packaging of the category.",
 				'not null' => TRUE
 			),
+			'msa_unit' => array(
+				'type' => 'varchar',
+				'length' => 255,
+				'description' => "Default msa packaging form.",
+				'not null' => TRUE
+			),
 			'invoice_category' => array(
 				'type' => 'varchar',
 				'length' => 255,
@@ -93,6 +99,20 @@ function ggw_state_reporting_update_6010() {
 				'type' => 'varchar',
 				'length' => 255,
 				'description' => "Reported packaging of the category.",
+				'not null' => TRUE
+			);
+
+	db_add_field($ret, $table, $field_name, $field, array());
+}
+
+function ggw_state_reporting_update_6011() {
+	$ret = array();
+	$table = 'ggw_state_reporting_terms';
+	$field_name = 'msa_unit';
+	$field = array(
+				'type' => 'varchar',
+				'length' => 255,
+				'description' => "Default msa packaging form.",
 				'not null' => TRUE
 			);
 
