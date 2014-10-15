@@ -67,7 +67,7 @@ function ggw_state_reporting_download_msa($start_date, $end_date, $file, $force_
 	$total_amount = '0';
 	$total_qty = '0';
 
-	$report .= ggw_state_reporting_msa_get_inventory_report($total_products, $existing_msa, $existing_msa_items);
+	$report .= ggw_state_reporting_msa_get_inventory_report($total_products, $existing_msa, $existing_msa_items, $force_positive);
 	$report .= ggw_msa_generate_customer_report($start_date, $end_date, $total_customers, $total_purchases, $total_amount, $total_qty, $existing_msa, $existing_msa_custs, $existing_msa_pur);
 
 	//Totals
@@ -200,7 +200,7 @@ function ggw_msa_generate_customer_report($start_date, $end_date, &$total_custom
 	 return $report;
 }
 
-function ggw_state_reporting_msa_get_inventory_report(&$total_products, $existing_msa = false, $existing_msa_items = array()) {
+function ggw_state_reporting_msa_get_inventory_report(&$total_products, $existing_msa = false, $existing_msa_items = array(), $force_positive) {
 	$sql = "SELECT n.nid, n.title, up.model, ctp.field_prod_packing_value, ctp.field_msa_discount_remarks_value, ctp.field_prod_form_value, ctp.field_msa_unit_value, sr.vid as tid, sr.msa_cat, sr.msa_unit FROM uc_products up
 			INNER JOIN term_node tn ON up.nid = tn.nid
  			INNER JOIN node n ON up.nid = n.nid
