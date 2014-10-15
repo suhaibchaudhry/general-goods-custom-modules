@@ -201,7 +201,7 @@ function ggw_msa_generate_customer_report($start_date, $end_date, &$total_custom
 }
 
 function ggw_state_reporting_msa_get_inventory_report(&$total_products, $existing_msa = false, $existing_msa_items = array()) {
-	$sql = "SELECT n.nid, n.title, up.model, ctp.field_prod_packing_value, ctp.field_msa_discount_remarks_value, ctp.field_prod_form_value, ctp.field_msa_unit_value, sr.vid as tid, sr.msa_cat FROM uc_products up
+	$sql = "SELECT n.nid, n.title, up.model, ctp.field_prod_packing_value, ctp.field_msa_discount_remarks_value, ctp.field_prod_form_value, ctp.field_msa_unit_value, sr.vid as tid, sr.msa_cat, sr.msa_unit FROM uc_products up
 			INNER JOIN term_node tn ON up.nid = tn.nid
  			INNER JOIN node n ON up.nid = n.nid
  			INNER JOIN content_type_product ctp ON n.vid = ctp.vid
@@ -233,10 +233,15 @@ function ggw_state_reporting_msa_get_inventory_report(&$total_products, $existin
 		
 		$content .= ggw_state_reporting_msa_cell($product->field_msa_discount_remarks_value, 50);
 
-		if(empty($product->field_msa_unit_value)) {
-			$content .= ggw_state_reporting_msa_cell($product->field_prod_form_value, 6, STR_PAD_LEFT, '0');
+		//Temporarily give priorty to category msa unit
+		if(empty($product->msa_unit)) {
+			if(empty($product->field_msa_unit_value)) {
+				$content .= ggw_state_reporting_msa_cell($product->field_prod_form_value, 6, STR_PAD_LEFT, '0');
+			} else {
+				$content .= ggw_state_reporting_msa_cell($product->field_msa_unit_value, 6, STR_PAD_LEFT, '0');
+			}
 		} else {
-			$content .= ggw_state_reporting_msa_cell($product->field_msa_unit_value, 6, STR_PAD_LEFT, '0');
+			$content .= ggw_state_reporting_msa_cell($product->msa_unit, 6, STR_PAD_LEFT, '0');
 		}
 
 		if(empty($product->field_msa_discount_remarks_value)) {
