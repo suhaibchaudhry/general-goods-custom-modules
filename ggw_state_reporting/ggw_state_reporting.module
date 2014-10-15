@@ -256,6 +256,13 @@ function ggw_state_reporting_form_alter(&$form, &$form_state, $form_id) {
 			'#default_value' => $defaults->msa_cat
 		);
 
+		$form['reporting-options']['msa_unit'] = array(
+			'#type' => 'textfield',
+			'#title' => t('MSA Unit'),
+			'#description' => 'MSA unit form.',
+			'#default_value' => $defaults->msa_unit
+		);
+
 		$form['reporting-options']['retail_markup'] = array(
 			'#type' => 'textfield',
 			'#title' => t('Retail Markup Percentage'),
@@ -270,7 +277,7 @@ function ggw_state_reporting_taxonomy($op, $type, $array = NULL) {
 		$tid = $array['tid'];
 		if(($op == 'insert' || $op == 'update') && isset($array['display-setting'])) {
 			db_query("DELETE FROM {ggw_state_reporting_terms} WHERE vid = %d", $tid);
-			db_query("INSERT INTO {ggw_state_reporting_terms} (vid, setting, packaging, invoice_category, retail_markup, msa_cat) VALUES (%d, %d, '%s', '%s', '%s', '%s')", $tid, $array['display-setting'], $array['packaging'], $array['invoice-category'], $array['retail_markup'], $array['msa_cat']);
+			db_query("INSERT INTO {ggw_state_reporting_terms} (vid, setting, packaging, invoice_category, retail_markup, msa_cat, msa_unit) VALUES (%d, %d, '%s', '%s', '%s', '%s', '%s')", $tid, $array['display-setting'], $array['packaging'], $array['invoice-category'], $array['retail_markup'], $array['msa_cat'], $array['msa_unit']);
 		} elseif($op == 'delete') {
 			db_query("DELETE FROM {ggw_state_reporting_terms} WHERE vid = %d", $tid);
 		}
