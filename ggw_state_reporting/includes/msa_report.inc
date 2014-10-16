@@ -265,7 +265,11 @@ function ggw_state_reporting_msa_get_inventory_report(&$total_products, $existin
 		$quantity_on_hand = $status['quantity'];
 
 		if($existing_msa && array_key_exists($product->msa_barcode, $existing_msa_items)) {
-			$quantity_on_hand += $existing_msa_items[$product->msa_barcode]['quantity'];
+			if($force_positive) {
+				$quantity_on_hand = abs($quantity_on_hand) + $existing_msa_items[$product->msa_barcode]['quantity'];
+			} else {
+				$quantity_on_hand += $existing_msa_items[$product->msa_barcode]['quantity'];
+			}
 			unset($existing_msa_items[$product->msa_barcode]);
 		}
 
