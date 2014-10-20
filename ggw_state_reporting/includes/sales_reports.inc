@@ -267,7 +267,7 @@ function _ggw_pos_report_daily() {
 
 		if($transac->credit_usage_id) {
 			$payby .= 'AR'.'<br />';
-			$payment .= uc_currency_format(user_term_credits_recursive_round($transac->ar_payment_amount), false);
+			$payment .= uc_currency_format(user_term_credits_recursive_round($transac->ar_payment_amount), false).'<br />';
 		}
 
 		$ticket_type = 'SALE';
