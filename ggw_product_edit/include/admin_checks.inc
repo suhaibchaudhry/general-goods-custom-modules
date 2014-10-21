@@ -12,7 +12,7 @@ function ggw_duplicate_empty_checkouts() {
 	LEFT JOIN {".$check_log_table."} chl ON tl.check_pid = chl.pid
 	LEFT JOIN {".$mo_log_table."} mo ON tl.mo_pid = mo.pid
 	LEFT JOIN {user_term_credits_usages} cu ON tl.credit_usage_id = cu.cuid
-	WHERE tl.amount = '0'");
+	WHERE tl.amount = '0' AND tl.ticket_id > 0");
 
 	$header = array('Date', 'Register', 'Invoice', 'Customer', 'Total', 'Payby', 'Payment', 'Transaction Type', 'Ticket #', 'Employee');
 	$rows = array();
@@ -20,7 +20,6 @@ function ggw_duplicate_empty_checkouts() {
 	$rma_cash_out = 0;
 	//Stats
 	while($transac = db_fetch_object($transacs)) {
-		$show_row = true;
 		$payby = '';
 		$payment = '';
 		if($transac->cash_pid) {
@@ -89,7 +88,6 @@ function ggw_duplicate_empty_checkouts() {
 				$ticket_type = 'SALE w/ RMA';
 				$payby .= 'RMA DEBIT'.'<br />';
 			} else {
-				$show_row = false;
 				$ticket_type = 'RMA';
 				$payby .= 'RMA CREDIT'.'<br />';
 				$transac->ticket_id = db_result(db_query("SELECT rma_ticket_id FROM {pos_api_expose_rma_refund_log} WHERE pid = '%d'", $transac->rma_pid));
@@ -104,20 +102,18 @@ function ggw_duplicate_empty_checkouts() {
 			$total_transacs += $transac->amount;
 		}
 
-		if($show_row) {
-			$rows[] = array(
-				date('n/j/Y', $transac->timestamp),
-				$transac->register_id,
-				$transac->pid,
-				_ggw_state_reporting_cust_name($transac->cuid),
-				uc_currency_format(user_term_credits_recursive_round($transac->amount), false),
-				$payby,
-				$payment,
-				$ticket_type,
-				l($transac->ticket_id, 'admin/store/orders/'.$transac->ticket_id, array('attributes' => array('target' => '_blank'))),
-				_ggw_state_reporting_cust_name($transac->uid)
-			);
-		}
+		$rows[] = array(
+			date('n/j/Y', $transac->timestamp),
+			$transac->register_id,
+			$transac->pid,
+			_ggw_state_reporting_cust_name($transac->cuid),
+			uc_currency_format(user_term_credits_recursive_round($transac->amount), false),
+			$payby,
+			$payment,
+			$ticket_type,
+			l($transac->ticket_id, 'admin/store/orders/'.$transac->ticket_id, array('attributes' => array('target' => '_blank'))),
+			_ggw_state_reporting_cust_name($transac->uid)
+		);
 	}
 
 	return theme('table', $header, $rows);
@@ -138,7 +134,7 @@ function ggw_duplicate_transactions() {
 	LEFT JOIN {".$check_log_table."} chl ON tl.check_pid = chl.pid
 	LEFT JOIN {".$mo_log_table."} mo ON tl.mo_pid = mo.pid
 	LEFT JOIN {user_term_credits_usages} cu ON tl.credit_usage_id = cu.cuid
-	WHERE tl.ticket_id IN (SELECT tl2.ticket_id FROM pos_api_expose_transaction_log tl2 GROUP BY tl2.ticket_id HAVING COUNT(*) > 1)");
+	WHERE tl.ticket_id > 0 AND tl.ticket_id IN (SELECT tl2.ticket_id FROM pos_api_expose_transaction_log tl2 GROUP BY tl2.ticket_id HAVING COUNT(*) > 1)");
 
 	$header = array('Date', 'Register', 'Invoice', 'Customer', 'Total', 'Payby', 'Payment', 'Transaction Type', 'Ticket #', 'Employee');
 	$rows = array();
@@ -146,7 +142,6 @@ function ggw_duplicate_transactions() {
 	$rma_cash_out = 0;
 	//Stats
 	while($transac = db_fetch_object($transacs)) {
-		$show_row = true;
 		$payby = '';
 		$payment = '';
 		if($transac->cash_pid) {
@@ -215,7 +210,6 @@ function ggw_duplicate_transactions() {
 				$ticket_type = 'SALE w/ RMA';
 				$payby .= 'RMA DEBIT'.'<br />';
 			} else {
-				$show_row = false;
 				$ticket_type = 'RMA';
 				$payby .= 'RMA CREDIT'.'<br />';
 				$transac->ticket_id = db_result(db_query("SELECT rma_ticket_id FROM {pos_api_expose_rma_refund_log} WHERE pid = '%d'", $transac->rma_pid));
@@ -230,20 +224,20 @@ function ggw_duplicate_transactions() {
 			$total_transacs += $transac->amount;
 		}
 
-		if($show_row) {
-			$rows[] = array(
-				date('n/j/Y', $transac->timestamp),
-				$transac->register_id,
-				$transac->pid,
-				_ggw_state_reporting_cust_name($transac->cuid),
-				uc_currency_format(user_term_credits_recursive_round($transac->amount), false),
-				$payby,
-				$payment,
-				$ticket_type,
-				l($transac->ticket_id, 'admin/store/orders/'.$transac->ticket_id, array('attributes' => array('target' => '_blank'))),
-				_ggw_state_reporting_cust_name($transac->uid)
-			);
-		}
+	
+		$rows[] = array(
+			date('n/j/Y', $transac->timestamp),
+			$transac->register_id,
+			$transac->pid,
+			_ggw_state_reporting_cust_name($transac->cuid),
+			uc_currency_format(user_term_credits_recursive_round($transac->amount), false),
+			$payby,
+			$payment,
+			$ticket_type,
+			l($transac->ticket_id, 'admin/store/orders/'.$transac->ticket_id, array('attributes' => array('target' => '_blank'))),
+			_ggw_state_reporting_cust_name($transac->uid)
+		);
+
 	}
 
 	return theme('table', $header, $rows);
