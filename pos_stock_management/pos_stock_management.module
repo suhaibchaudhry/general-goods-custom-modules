@@ -121,26 +121,39 @@ function pos_stock_management_product_access($node) {
   return uc_product_is_product($node) && node_access('update', $node) && user_access('manipulate pos stock management');
 }
 
-function pos_stock_management_last_reset($nid) {
-  return db_result(db_query("SELECT `timestamp` FROM pos_in_stock_management WHERE reset = '1' AND product_nid = '%d' ORDER BY `timestamp` DESC", $nid));
+function pos_stock_management_last_reset($nid, $close_stamp = false) {
+  if($close_stamp) {
+    return db_result(db_query("SELECT `timestamp` FROM pos_in_stock_management WHERE reset = '1' AND product_nid = '%d' AND `timestamp` <= '%s' ORDER BY `timestamp` DESC", $nid, $close_stamp));
+  } else {
+    return db_result(db_query("SELECT `timestamp` FROM pos_in_stock_management WHERE reset = '1' AND product_nid = '%d' ORDER BY `timestamp` DESC", $nid));
+  }
 }
 
-function pos_stock_management_quantity($nid) {
-  $timestamp = pos_stock_management_last_reset($nid);
-	$quantity = db_result(db_query("SELECT SUM(stock_adjustment) FROM {pos_in_stock_management} WHERE product_nid = '%d' AND `timestamp` >= '%s'", $nid, $timestamp));
-	$sold = db_result(db_query("SELECT SUM(stock_adjustment) FROM {pos_out_stock_management} WHERE product_nid = '%d' AND `timestamp` >= '%s'", $nid, $timestamp));
+function pos_stock_management_quantity($nid, $close_stamp = false) {
+  $timestamp = pos_stock_management_last_reset($nid, $close_stamp);
+  if($close_stamp) {
+    $quantity = db_result(db_query("SELECT SUM(stock_adjustment) FROM {pos_in_stock_management} WHERE product_nid = '%d' AND `timestamp` >= '%s' AND `timestamp` <= '%s'", $nid, $timestamp, $close_stamp));
+    $sold = db_result(db_query("SELECT SUM(stock_adjustment) FROM {pos_out_stock_management} WHERE product_nid = '%d' AND `timestamp` >= '%s' AND `timestamp` <= '%s'", $nid, $timestamp, $close_stamp));
+  } else {
+  	$quantity = db_result(db_query("SELECT SUM(stock_adjustment) FROM {pos_in_stock_management} WHERE product_nid = '%d' AND `timestamp` >= '%s'", $nid, $timestamp));
+  	$sold = db_result(db_query("SELECT SUM(stock_adjustment) FROM {pos_out_stock_management} WHERE product_nid = '%d' AND `timestamp` >= '%s'", $nid, $timestamp));
+  }
 
 	return $quantity-$sold;
 }
 
-function pos_stock_management_average_cost($nid) {
-  $timestamp = pos_stock_management_last_reset($nid);
-	return db_result(db_query("SELECT AVG(unit_cost) FROM {pos_in_stock_management} WHERE product_nid = '%d' AND `timestamp` >= '%s'", $nid, $timestamp));
+function pos_stock_management_average_cost($nid, $close_stamp = false) {
+  $timestamp = pos_stock_management_last_reset($nid, $close_stamp);
+  if($close_stamp) {
+	  return db_result(db_query("SELECT AVG(unit_cost) FROM {pos_in_stock_management} WHERE product_nid = '%d' AND `timestamp` >= '%s' AND `timestamp` <= '%s'", $nid, $timestamp, $close_stamp));
+  } else {
+    return db_result(db_query("SELECT AVG(unit_cost) FROM {pos_in_stock_management} WHERE product_nid = '%d' AND `timestamp` >= '%s'", $nid, $timestamp));
+  }
 }
 
-function pos_stock_management_status($nid) {
-  $quantity = pos_stock_management_quantity($nid);
-  $cost = pos_stock_management_average_cost($nid);
+function pos_stock_management_status($nid, $close_stamp = false) {
+  $quantity = pos_stock_management_quantity($nid, $close_stamp);
+  $cost = pos_stock_management_average_cost($nid, $close_stamp);
   return array('quantity' => $quantity, 'cost' => $cost);
 }
 
