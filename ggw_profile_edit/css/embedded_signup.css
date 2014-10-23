@@ -41,3 +41,8 @@
 .form-layout-default {
 	background: none !important;
 }
+
+.password-description {
+	clear: both;
+	padding: 8px;
+}
