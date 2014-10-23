@@ -11,6 +11,10 @@ Drupal.behaviors.conditionalRoles = function(context) {
 		checkRole($(this), ['#edit-roles-9', '#edit-roles-10', '#edit-roles-11'], $('fieldset.group-company-information', context));
 		checkRole($(this), ['#edit-roles-8', '#edit-roles-6', '#edit-roles-3', '#edit-roles-4', '#edit-roles-5'], $('fieldset.group-employee-information', context));
 	});
+
+	if($('input#edit-roles-11').is(':checked') || $('input#edit-roles-9').is(':checked')) {
+		$('fieldset.group-company-information', context).show();
+	}
 }
 
 function delegateInverses(clickedRole, selectSet, unselectSet, unselectFieldset) {

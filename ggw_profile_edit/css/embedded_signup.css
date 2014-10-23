@@ -1,0 +1,43 @@
+.group-contact-information .postal-form {
+	display: none;
+}
+
+#branding, #help-toggler {
+	display: none !important;
+}
+
+#edit-field-profile-phone-0-wrapper, #edit-field-profile-fax-0-wrapper {
+	display: none;
+}
+
+#edit-name-wrapper, #edit-mail-wrapper, #edit-pass-pass1-wrapper, #edit-pass-pass2-wrapper {
+	width: 45%;
+	float: left;
+}
+
+#edit-notify-wrapper {
+	display: none;
+}
+
+#edit-credit-limit-wrapper, #edit-term-limit-wrapper, #edit-term-note-wrapper {
+	width: 30%;
+	float: left;
+}
+
+#edit-field-profile-first-name-0-value-wrapper, #edit-field-last-name-0-value-wrapper {
+	width: 45%;
+	float: left;
+}
+
+.column-side {
+	display: none;
+}
+
+.column-main {
+	float: none !important;
+	width: auto !important;
+}
+
+.form-layout-default {
+	background: none !important;
+}
