@@ -25,16 +25,17 @@ function ggw_profile_edit_menu() {
 }
 
 function ggw_profile_add_new_user() {
-	//$token = $_GET['token'];
-	//$uid = _pos_api_expose_uid_from_token($token);
-	//if($uid) {
-	//} else {
-	//	print "Access denied to invoice.";
-	//}
-	drupal_add_js(drupal_get_path('module', 'ggw_profile_edit').'/js/conditional_fieldsets.js');
-	drupal_add_js(drupal_get_path('module', 'ggw_profile_edit').'/js/pos_signup_form.js');
-	drupal_add_css(drupal_get_path('module', 'ggw_profile_edit').'/css/embedded_signup.css');
-	return drupal_get_form('user_register');
+	$token = $_GET['token'];
+	$uid = _pos_api_expose_uid_from_token($token);
+	if($uid) {
+		drupal_add_js(drupal_get_path('module', 'ggw_profile_edit').'/js/conditional_fieldsets.js');
+		drupal_add_js(drupal_get_path('module', 'ggw_profile_edit').'/js/pos_signup_form.js');
+		drupal_add_css(drupal_get_path('module', 'ggw_profile_edit').'/css/embedded_signup.css');
+
+		return drupal_get_form('user_register');
+	} else {
+		print "Access denied to user form.";
+	}
 }
 
 function ggw_profile_edit_form_alter(&$form, $form_state, $form_id) {
