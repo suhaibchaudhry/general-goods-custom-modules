@@ -46,3 +46,7 @@
 	clear: both;
 	padding: 8px;
 }
+
+.messages.error {
+	display: none !important;
+}
