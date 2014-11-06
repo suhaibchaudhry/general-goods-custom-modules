@@ -97,7 +97,8 @@ function utc_invoice_history($user, $themeless = false) {
 	$invoices = db_query("SELECT tl.pid, tl.timestamp, tl.credit_usage_id, tl.ticket_id, tl.amount, cu.due_date
 				 			FROM {pos_api_expose_transaction_log} tl
 				 			LEFT JOIN user_term_credits_usages cu ON tl.credit_usage_id = cu.cuid 
-				 			WHERE tl.timestamp >= '%s' AND tl.timestamp <= '%s' AND tl.cuid = '%d'", $date, $end_date, $user->uid);
+	LEFT JOIN uc_orders uo ON uo.order_id = tl.ticket_id
+				 			WHERE tl.timestamp >= '%s' AND tl.timestamp <= '%s' AND tl.cuid = '%d' AND uo.order_status = 'pos_completed'", $date, $end_date, $user->uid);
 
 	$header = array('Type', 'Invoice #', 'Ticket #', 'Date', 'Inv. Total', 'Balance', 'Due Date');
 	$data = array();
