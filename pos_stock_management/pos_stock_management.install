@@ -101,6 +101,13 @@ function pos_stock_management_schema() {
         		'size' => 'big',
         		'not null' => TRUE,
         		'default' => 0
+			),
+			'ticket_id' => array(
+				'type' => 'int',
+        		'not null' => TRUE,
+        		'default' => 0,
+				'unsigned' => TRUE,
+				'description' => "Ticket id open"
 			)
 		),
 		'primary key' => array('se_id'),
@@ -207,4 +214,19 @@ function pos_stock_management_install() {
 
 function pos_stock_management_uninstall() {
 	drupal_uninstall_schema('pos_stock_management');
+}
+
+function pos_stock_management_update_6015() {
+	$ret = array();
+	$table = 'pos_out_stock_management';
+	$field_name = 'ticket_id';
+	$field = array(
+		'type' => 'int',
+        'not null' => TRUE,
+        'default' => 0,
+		'unsigned' => TRUE,
+		'description' => "Ticket id open"
+	);
+
+	db_add_field($ret, $table, $field_name, $field, array());
 }
