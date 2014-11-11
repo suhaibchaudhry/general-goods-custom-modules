@@ -791,3 +791,117 @@ function format_phone_number($data) {
 	    return $result;
 	}
 }
+
+function full_utc_customer_activity_report() {
+	drupal_add_css(drupal_get_path('module', 'ggw_state_reporting').'/css/sales_report_form.css');
+
+	$profile = content_profile_load('profile', $user->uid);
+
+	$content = $header."\n";
+	$content .= drupal_get_form('user_term_credits_date_range_form', 2592000);
+
+	if($_GET['start_date']) {
+		$date = strtotime($_GET['start_date']['date'].' '.$_GET['start_date']['time']);
+	} else {
+		$timestamp = time()-2592000;
+		$date = mktime(7, 0, 0, date("n", $timestamp), date("j", $timestamp), date("Y", $timestamp));
+	}
+
+	if($_GET['end_date']) {
+		$end_date = strtotime($_GET['end_date']['date'].' '.$_GET['end_date']['time']);
+	} else {
+		$end_date = mktime(22, 0, 0);
+	}
+
+	$sql = "SELECT tl.cuid AS customer_uid, MAX(tl.timestamp) AS etime
+				 			FROM {pos_api_expose_transaction_log} tl 
+				 			WHERE tl.credit_usage_id <> 0 AND tl.timestamp <= '%s' GROUP BY tl.cuid";
+
+	/*$settlements_sql = "SELECT u.uid AS customer_uid, s.settlement_date AS etime FROM user_term_credits_settlements s LEFT JOIN user_term_credits_usages u ON s.cuid = u.cuid WHERE s.settlement_date >= '%s' AND s.settlement_date <= '%s' GROUP BY u.uid, s.settlement_date";
+
+	$sql = "SELECT p.customer_uid, MAX(p.etime) AS latest_interaction FROM (".$invoices." UNION ".$settlements_sql.") p GROUP BY customer_uid ORDER BY latest_interaction DESC";*/
+
+	$customers = db_query($sql, $end_date);
+
+	$header = array('Customer', 'Phone #', 'Previous Balance', 'Receipt', 'Payment', 'Current Balance', 'Tax Amount');
+	$rows = array();
+	$total_previous = '0';
+	$total_receipt = '0';
+	$total_payment = '0';
+	$current_outstanding = '0';
+	$total_tax = '0';
+
+	while($customer = db_fetch_object($customers)) {
+		$profile = content_profile_load('profile', $customer->customer_uid);
+		$start_account = _user_term_credits_getCredits($customer->customer_uid, $date);
+		$end_account = _user_term_credits_getCredits($customer->customer_uid, $end_date);
+
+		$total_previous = bcadd(trim($total_previous), trim($start_account->pending_payments), 6);
+		$current_outstanding = bcadd(trim($current_outstanding), trim($end_account->pending_payments), 6);
+
+		$receipt_amount = db_result(db_query("SELECT SUM(tl.amount)
+				 			FROM {pos_api_expose_transaction_log} tl 
+				 			WHERE tl.credit_usage_id <> 0 AND tl.timestamp >= '%s' AND tl.timestamp <= '%s' AND tl.cuid = '%d'", $date, $end_date, $customer->customer_uid));
+
+		if($receipt_amount) {
+			$total_receipt = bcadd(trim($total_receipt), trim($receipt_amount), 6);
+		}
+
+		$payment_amount = db_result(db_query("SELECT SUM(s.settlement_amount) FROM user_term_credits_settlements s LEFT JOIN user_term_credits_usages u ON s.cuid = u.cuid WHERE s.settlement_date >= '%s' AND s.settlement_date <= '%s' AND u.uid = '%d' GROUP BY u.uid", $date, $end_date, $customer->customer_uid));
+
+		if($payment_amount) {
+			$total_payment = bcadd(trim($total_payment), trim($payment_amount), 6);
+		}
+
+		$tax_amount = db_result(db_query("SELECT SUM(ucl.amount)
+				 			FROM {pos_api_expose_transaction_log} tl
+				 			INNER JOIN {uc_order_line_items} ucl ON tl.ticket_id = ucl.order_id 
+				 			WHERE tl.credit_usage_id <> 0 AND tl.timestamp >= '%s' AND tl.timestamp <= '%s' AND tl.cuid = '%d'", $date, $end_date, $customer->customer_uid));
+
+		if($tax_amount) {
+			$total_tax = bcadd(trim($total_tax), trim($tax_amount), 6);
+		}
+
+		if($receipt_amount) {
+			$receipt_amount = uc_currency_format(user_term_credits_recursive_round($receipt_amount), false);
+		} else {
+			$receipt_amount = '';
+		}
+
+		if($payment_amount) {
+			$payment_amount = uc_currency_format(user_term_credits_recursive_round($payment_amount), false);
+		} else {
+			$payment_amount = '';
+		}
+
+		if($tax_amount) {
+			$tax_amount = uc_currency_format(user_term_credits_recursive_round($tax_amount), false);
+		} else {
+			$tax_amount = '';
+		}
+
+		$rows[] = array(
+			$profile->name.'- '.substr($profile->title, 0, 24),
+			format_phone_number($profile->field_profile_phone[0]['number']),
+			substr($start_account->pending_payments_view, 1),
+			$receipt_amount,
+			$payment_amount,
+			substr($end_account->pending_payments_view, 1),
+			$tax_amount
+		);
+	}
+
+	$rows[] = array(
+		'',
+		'',
+		'<strong>'.uc_currency_format(user_term_credits_recursive_round($total_previous), false).'</strong>',
+		'<strong>'.uc_currency_format(user_term_credits_recursive_round($total_receipt), false).'</strong>',
+		'<strong>'.uc_currency_format(user_term_credits_recursive_round($total_payment), false).'</strong>',
+		'<strong>'.uc_currency_format(user_term_credits_recursive_round($current_outstanding), false).'</strong>',
+		'<strong>'.uc_currency_format(user_term_credits_recursive_round($total_tax), false).'</strong>'
+	);
+
+	$content .= theme('table', $header, $rows);
+
+	return $content;
+}
