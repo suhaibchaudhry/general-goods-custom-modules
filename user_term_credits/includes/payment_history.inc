@@ -536,11 +536,85 @@ function utc_customer_statement($user, $themeless = false) {
 				$age_rows[] = $row;
 			}
 
+			$payment = '';
+
+			$transacs = db_query("SELECT tl.credit_usage_id, tl.cash_pid, tl.rma_pid, tl.cc_pid, tl.check_pid, tl.mo_pid, tl.amount, tl.pid, tl.cuid, tl.uid, tl.timestamp, tl.register_id, tl.ticket_id, cl.amount_paid AS cash_paid, cl.change AS change_made, cl.total AS cash_total, chl.paid_amount AS check_payment, chl.check_number, chl.post_dated AS check_post_dated, chl.cash_date AS check_cash_date, ccl.amount_paid AS cc_amount, mo.paid_amount AS mo_paid_amount, mo.reference AS mo_ref, cu.credit_amount AS ar_payment_amount, ccl.transaction_id FROM {pos_api_expose_transaction_log} tl LEFT JOIN {pos_api_expose_cash_log} cl ON tl.cash_pid = cl.pid LEFT JOIN {pos_api_expose_credit_card_log} ccl ON tl.cc_pid = ccl.pid LEFT JOIN {pos_api_expose_check_log} chl ON tl.check_pid = chl.pid LEFT JOIN {pos_api_expose_money_order_log} mo ON tl.mo_pid = mo.pid LEFT JOIN {user_term_credits_usages} cu ON tl.credit_usage_id = cu.cuid WHERE tl.pid = '%d'", $transaction['invoice_id']);
+
+			$transac = db_fetch_object($transacs);
+
+			$payment = '';
+			if($transac->cash_pid) {
+				if($transac->cash_paid > 0 || $transac->change_made > 0) {
+					$payment .= 'CASH: ';
+					$payment .= 'CHANGE: ';
+					$payment .= uc_currency_format(user_term_credits_recursive_round($transac->cash_paid), false)."\n";
+					$payment .= uc_currency_format(user_term_credits_recursive_round($transac->change_made), false)."\n";
+				}
+			}
+
+			if($transac->cc_pid) {
+				$payment .= 'Credit Card';
+				if($transac->transaction_id) {
+					$payment .= ' - '.$transac->transaction_id;
+				}
+				$payment .= ': ';
+				$payment .= uc_currency_format(user_term_credits_recursive_round($transac->cc_amount), false)."\n";
+			}
+
+			if($transac->check_pid) {
+				if($transac->check_post_dated) {
+					$payment .= 'POST DATED CHECK';
+					if($transac->check_number) {
+						$payment .= ' - '.$transac->check_number;
+					}
+					$payment .= ': ';
+					$payment .= uc_currency_format(user_term_credits_recursive_round($transac->check_payment), false)."\n";
+					$payment .= ' - '.$transac->check_cash_date."\n";
+				} else {
+					$payment .= 'CHECK';
+					if($transac->check_number) {
+						$payment .= ' - '.$transac->check_number;
+					}
+					$payment .= ': ';
+
+					$payment .= uc_currency_format(user_term_credits_recursive_round($transac->check_payment), false)."\n";
+				}
+			}
+
+			if($transac->mo_pid) {
+				if($transac->mo_ref) {
+					$payment .= 'Money Order - '.$transac->mo_ref.': ';
+				} else {
+					$payment .= 'Money Order: ';
+				}
+				$payment .= uc_currency_format(user_term_credits_recursive_round($transac->mo_paid_amount), false)."\n";
+			}
+
+			if($transac->credit_usage_id) {
+				$payment .= 'AR: ';
+				$payment .= uc_currency_format(user_term_credits_recursive_round($transac->ar_payment_amount), false)."\n";
+			}
+
+			if($transac->rma_pid < 0) {
+				$payment .= 'RMA CASH OUT: ';
+
+				$transac->amount = (-1)*$transac->amount;
+				$payment .= uc_currency_format(user_term_credits_recursive_round($transac->amount), false)."\n";
+			} else if($transac->rma_pid > 0) {
+				$rma = db_result(db_query("SELECT (-1)*total_refund FROM pos_api_expose_rma_refund_log WHERE pid = '%d'", $transac->rma_pid));
+				if($rma > 0) {
+					$payment .= 'RMA DEBIT: ';
+				} else {
+					$payment .= 'RMA CREDIT: ';
+				}
+				$payment .= uc_currency_format(user_term_credits_recursive_round($rma), false)."\n";
+			}
+
 			$rows[] = array(
 				date('n/j/Y', $transaction['timestamp']),
 				$transaction['invoice_id'].'/'.l($transaction['ticket_id'], 'admin/store/orders/'.$transaction['ticket_id']),
 				uc_currency_format(user_term_credits_recursive_round($transaction['full_amount'])),
-				'',
+				$payment,
 				uc_currency_format(user_term_credits_recursive_round($balance))
 			);
 		} else {
