@@ -545,37 +545,37 @@ function utc_customer_statement($user, $themeless = false) {
 			$payment = '';
 			if($transac->cash_pid) {
 				if($transac->cash_paid > 0 || $transac->change_made > 0) {
-					$payment .= 'CASH: ';
-					$payment .= 'CHANGE: ';
+					$payment .= '<strong>CASH:</strong> ';
+					$payment .= '<strong>CHANGE:</strong> ';
 					$payment .= uc_currency_format(user_term_credits_recursive_round($transac->cash_paid), false)."\n";
 					$payment .= uc_currency_format(user_term_credits_recursive_round($transac->change_made), false)."\n";
 				}
 			}
 
 			if($transac->cc_pid) {
-				$payment .= 'Credit Card';
+				$payment .= '<strong>Credit Card';
 				if($transac->transaction_id) {
 					$payment .= ' - '.$transac->transaction_id;
 				}
-				$payment .= ': ';
+				$payment .= ':</strong> ';
 				$payment .= uc_currency_format(user_term_credits_recursive_round($transac->cc_amount), false)."\n";
 			}
 
 			if($transac->check_pid) {
 				if($transac->check_post_dated) {
-					$payment .= 'POST DATED CHECK';
+					$payment .= '<strong>POST DATED CHECK';
 					if($transac->check_number) {
 						$payment .= ' - '.$transac->check_number;
 					}
-					$payment .= ': ';
+					$payment .= ':</strong> ';
 					$payment .= uc_currency_format(user_term_credits_recursive_round($transac->check_payment), false)."\n";
 					$payment .= ' - '.$transac->check_cash_date."\n";
 				} else {
-					$payment .= 'CHECK';
+					$payment .= '<strong>CHECK';
 					if($transac->check_number) {
 						$payment .= ' - '.$transac->check_number;
 					}
-					$payment .= ': ';
+					$payment .= ':</strong> ';
 
 					$payment .= uc_currency_format(user_term_credits_recursive_round($transac->check_payment), false)."\n";
 				}
@@ -583,29 +583,29 @@ function utc_customer_statement($user, $themeless = false) {
 
 			if($transac->mo_pid) {
 				if($transac->mo_ref) {
-					$payment .= 'Money Order - '.$transac->mo_ref.': ';
+					$payment .= '<strong>Money Order - '.$transac->mo_ref.':</strong> ';
 				} else {
-					$payment .= 'Money Order: ';
+					$payment .= '<strong>Money Order:</strong> ';
 				}
 				$payment .= uc_currency_format(user_term_credits_recursive_round($transac->mo_paid_amount), false)."\n";
 			}
 
 			if($transac->credit_usage_id) {
-				$payment .= 'AR: ';
+				$payment .= '<strong>AR:</strong> ';
 				$payment .= uc_currency_format(user_term_credits_recursive_round($transac->ar_payment_amount), false)."\n";
 			}
 
 			if($transac->rma_pid < 0) {
-				$payment .= 'RMA CASH OUT: ';
+				$payment .= '<strong>RMA CASH OUT:</strong> ';
 
 				$transac->amount = (-1)*$transac->amount;
 				$payment .= uc_currency_format(user_term_credits_recursive_round($transac->amount), false)."\n";
 			} else if($transac->rma_pid > 0) {
 				$rma = db_result(db_query("SELECT (-1)*total_refund FROM pos_api_expose_rma_refund_log WHERE pid = '%d'", $transac->rma_pid));
 				if($rma > 0) {
-					$payment .= 'RMA DEBIT: ';
+					$payment .= '<strong>RMA DEBIT:</strong> ';
 				} else {
-					$payment .= 'RMA CREDIT: ';
+					$payment .= '<strong>RMA CREDIT:</strong> ';
 				}
 				$payment .= uc_currency_format(user_term_credits_recursive_round($rma), false)."\n";
 			}
@@ -642,7 +642,7 @@ function utc_customer_statement($user, $themeless = false) {
 			}
 			$rows[] = array(
 				date('n/j/Y', $transaction['timestamp']),
-				$column_1,
+				'<strong>'.$column_1.'</strong>',
 				'',
 				$column_2,
 				$bal_col
