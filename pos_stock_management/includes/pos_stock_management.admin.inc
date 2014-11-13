@@ -58,7 +58,7 @@ function pos_stock_management_edit_form($form_state, $node) {
 	'#title' => t('Unit Cost'), 
 	'#size' => 20,
 	'#maxlength' => 128,
-	'#required' => TRUE
+	'#required' => FALSE
   );
   
   $form['new_stock']['stock_comment'] = array(
