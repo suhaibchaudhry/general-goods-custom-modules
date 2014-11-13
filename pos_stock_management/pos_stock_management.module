@@ -172,7 +172,7 @@ function pos_stock_management_history($nid) {
 
 function _pos_stock_management_item_history($nid) {
   $predicates = array('No', 'Yes');
-  $sql = "SELECT * FROM {pos_in_stock_management} pism LEFT JOIN {users} u ON pism.vendor_uid = u.uid LEFT JOIN {node} n on u.uid = n.uid WHERE pism.product_nid = %d ORDER BY pism.se_id DESC";
+  $sql = "SELECT * FROM {pos_in_stock_management} pism LEFT JOIN {users} u ON pism.vendor_uid = u.uid LEFT JOIN {node} n on u.uid = n.uid WHERE pism.product_nid = %d GROUP BY pism.se_id ORDER BY pism.se_id DESC";
   $stock_histories = db_query($sql, $nid);
   $products = array();
 
