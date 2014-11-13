@@ -20,6 +20,15 @@ function ggw_product_edit_menu() {
 			'file' => 'include/admin_checks.inc'
 		);
 
+		$items['admin/dp-tickets'] = array(
+			'title' => 'DP Tickets',
+  			'type' => MENU_CALLBACK,
+			'description' => 'Loads dp tickets.',
+			'page callback' => 'ggw_product_tickets_view_dp',
+			'access arguments' => array('view mobile orders'),
+			'file' => 'include/admin_checks.inc'
+		);
+
 		$items['admin/duplicate-transactions'] = array(
 			'title' => 'Duplicate Transactions',
 			'type' => MENU_CALLBACK,

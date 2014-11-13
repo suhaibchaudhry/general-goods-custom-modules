@@ -270,6 +270,22 @@ function ggw_inconsitent_tickets() {
 	return theme('table', $header, $rows);
 }
 
+function ggw_product_tickets_view_dp() {
+	$tickets = db_query("SELECT order_id, uid FROM uc_orders WHERE billing_zone = '1' AND order_id NOT IN (SELECT ticket_id FROM pos_api_expose_transaction_log_dp WHERE 1)");
+
+	$header = array('Ticket Id', 'Customer', 'Print');
+	$rows = array();
+	while($ticket = db_fetch_object($tickets)) {
+		$rows[] = array(
+			$ticket->order_id,
+			_ggw_state_reporting_cust_name($ticket->uid),
+			l('Print', 'admin/invoice/print/'.$ticket->order_id)
+		);
+	}
+
+	return theme('table', $header, $rows);
+}
+
 function ggw_open_tickets_log() {
 	$tickets = db_query("
 	SELECT tl.ticket_id, u.uid AS euid, u.name, uc.uid, ucc.name AS cname, uc.created, tl.`timestamp` FROM pos_api_expose_ticket_log tl
