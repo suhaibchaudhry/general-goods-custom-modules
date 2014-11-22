@@ -99,6 +99,7 @@ function user_term_credits_schema() {
 		),
 		'indexes' => array(
 			'consumptions' => array('cuid', 'uid'),
+			'consuming_users' => array('uid')
 		),
 		'primary key' => array('cuid')
 	);
@@ -165,6 +166,7 @@ function user_term_credits_schema() {
 		),
 		'indexes' => array(
 			'consumptions' => array('sid', 'cuid'),
+			'credit_usage' => array('cuid')
 		),
 		'primary key' => array('sid')
 	);
@@ -446,6 +448,20 @@ function user_term_credits_update_6017() {
 			);
 
 	db_add_field($ret, $table, $field_name, $field, array());
+}
+
+function user_term_credits_update_6018() {
+	$ret = array();
+	$table = 'user_term_credits_usages';
+	$name = 'consuming_users';
+	$fields = array('uid');
+	db_add_index($ret, $table, $name, $fields);
+
+	$ret = array();
+	$table = 'user_term_credits_settlements';
+	$name = 'credit_usage';
+	$fields = array('cuid');
+	db_add_index($ret, $table, $name, $fields);
 }
 
 function _user_term_credits_create_new_tables($new_tables) {
