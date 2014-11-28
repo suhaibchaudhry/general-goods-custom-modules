@@ -832,6 +832,7 @@ function full_utc_customer_activity_report() {
 	$total_tax = '0';
 
 	while($customer = db_fetch_object($customers)) {
+		$display_flag = false;
 		$profile = content_profile_load('profile', $customer->customer_uid);
 		$start_account = _user_term_credits_getCredits($customer->customer_uid, $date);
 		$end_account = _user_term_credits_getCredits($customer->customer_uid, $end_date);
@@ -839,17 +840,23 @@ function full_utc_customer_activity_report() {
 		$total_previous = bcadd(trim($total_previous), trim($start_account->pending_payments), 6);
 		$current_outstanding = bcadd(trim($current_outstanding), trim($end_account->pending_payments), 6);
 
+		if($start_account->pending_payments > 0 || $end_account->pending_payments > 0) {
+			$display_flag = true;
+		}
+
 		$receipt_amount = db_result(db_query("SELECT SUM(tl.amount)
 				 			FROM {pos_api_expose_transaction_log} tl 
 				 			WHERE tl.credit_usage_id <> 0 AND tl.timestamp >= '%s' AND tl.timestamp <= '%s' AND tl.cuid = '%d'", $date, $end_date, $customer->customer_uid));
 
 		if($receipt_amount) {
+			$display_flag = true;
 			$total_receipt = bcadd(trim($total_receipt), trim($receipt_amount), 6);
 		}
 
 		$payment_amount = db_result(db_query("SELECT SUM(s.settlement_amount) FROM user_term_credits_settlements s LEFT JOIN user_term_credits_usages u ON s.cuid = u.cuid WHERE s.settlement_date >= '%s' AND s.settlement_date <= '%s' AND u.uid = '%d' GROUP BY u.uid", $date, $end_date, $customer->customer_uid));
 
 		if($payment_amount) {
+			$display_flag = true;
 			$total_payment = bcadd(trim($total_payment), trim($payment_amount), 6);
 		}
 
@@ -859,6 +866,7 @@ function full_utc_customer_activity_report() {
 				 			WHERE tl.credit_usage_id <> 0 AND tl.timestamp >= '%s' AND tl.timestamp <= '%s' AND tl.cuid = '%d'", $date, $end_date, $customer->customer_uid));
 
 		if($tax_amount) {
+			$display_flag = true;
 			$total_tax = bcadd(trim($total_tax), trim($tax_amount), 6);
 		}
 
@@ -880,15 +888,17 @@ function full_utc_customer_activity_report() {
 			$tax_amount = '';
 		}
 
-		$rows[] = array(
-			$profile->name.'- '.substr($profile->title, 0, 24),
-			format_phone_number($profile->field_profile_phone[0]['number']),
-			substr($start_account->pending_payments_view, 1),
-			$receipt_amount,
-			$payment_amount,
-			substr($end_account->pending_payments_view, 1),
-			$tax_amount
-		);
+		if($display_flag) {
+			$rows[] = array(
+				$profile->name.'- '.substr($profile->title, 0, 24),
+				format_phone_number($profile->field_profile_phone[0]['number']),
+				substr($start_account->pending_payments_view, 1),
+				$receipt_amount,
+				$payment_amount,
+				substr($end_account->pending_payments_view, 1),
+				$tax_amount
+			);
+		}
 	}
 
 	$rows[] = array(
