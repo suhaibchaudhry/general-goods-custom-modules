@@ -1,7 +1,8 @@
 <?php
 function ggw_state_reporting_download_msa($start_date, $end_date, $file, $force_positive = false) {
+	$date_str = date('n-j-Y', $start_date).'_'.date('n-j-Y', $end_date);
 	//header("Content-Type: text/plain");
-	header('Content-disposition: attachment;filename=weekly_msa_report.txt');
+	header('Content-disposition: attachment;filename=weekly_msa_report-'.$date_str.'.txt');
 
 	$existing_msa = false;
 	if($file) {
@@ -301,8 +302,9 @@ function ggw_state_reporting_msa_get_inventory_report(&$total_products, $existin
 }
 
 function ggw_state_reporting_download_state($start_date, $end_date) {
+		$date_str = date('n-j-Y', $start_date).'_'.date('n-j-Y', $end_date);
 		header("Content-type: text/csv");
-		header('Content-disposition: attachment;filename=statereport.csv');
+		header('Content-disposition: attachment;filename=statereport_'.$date_str.'.csv');
 
 		$inner_query = "SELECT pn.title AS company, ctp.field_tax_id_value, ctp.field_tobacco_permit_id_value, ctp.field_company_address_street1, ctp.field_company_address_street2, ctp.field_company_address_zip, ctp.field_company_address_city, ctp.field_company_address_state, uo.order_id, ls.title, ls.tQty, uo.uid, ls.tPrice, ls.packaging, uo.order_total, ls.name, ls.tid FROM (SELECT order_id, title, td.name, srt.packaging, tn.tid, SUM(qty) AS tQty, SUM(price*qty) as tPrice FROM {uc_order_products} uop INNER JOIN {term_node} tn ON uop.nid = tn.nid INNER JOIN {term_data} td ON tn.tid = td.tid INNER JOIN {ggw_state_reporting_terms} srt ON tn.tid = srt.vid WHERE srt.setting IN ('1', '3') GROUP BY order_id, tn.tid) ls INNER JOIN {uc_orders} uo ON ls.order_id = uo.order_id INNER JOIN {pos_api_expose_transaction_log} tl ON tl.ticket_id = uo.order_id INNER JOIN {node} pn ON pn.uid = uo.uid INNER JOIN {content_type_profile} ctp ON pn.vid = ctp.vid WHERE uo.order_status = 'pos_completed' AND pn.type = 'profile' AND tl.timestamp >= '%s' AND tl.timestamp <= '%s'";
 
