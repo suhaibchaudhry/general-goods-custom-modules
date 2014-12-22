@@ -48,7 +48,7 @@ function _ggw_mobile_notify_usertab($user) {
 
 	$status = json_decode($result);
 	if($status->status) {
-		return 'Push notification Form';
+		return drupal_get_form('ggw_mobile_notify_user_form', $user->name);
 	} else {
 		return $status->message;
 	}
@@ -81,6 +81,37 @@ function ggw_mobile_notify_form($form_state) {
 	return $form;
 }
 
+function ggw_mobile_notify_user_form($form_state, $userName) {
+	$form = array();
+
+	$form['message'] = array(
+		'#type' => 'textfield',
+		'#title' => t('Message'),
+		'#required' => true,
+		'#maxlength' => 256
+	);
+
+	$form['user'] = array(
+		'#type' => 'value',
+		'#value' => $userName
+	);
+
+	$form['submit'] = array(
+		'#type' => 'submit',
+		'#value' => 'Broadcast Message'
+	);
+
+	return $form;
+}
+
+function ggw_mobile_notify_user_form_submit($form, $form_state) {
+	$key = '8C25410F859143F5A216703A0C67ABDDA5D87341D7384B4AB84FBE499186D132';
+	$message = $form_state['values']['message'];
+	$user = $form_state['values']['user'];
+
+	_ggw_mobile_push_notifications_send($key, $message, 'http://www.abouttrading.com/ggw/notification_push_user.php', $user);
+}
+
 function ggw_mobile_notify_form_submit($form, $form_state) {
 	$key = '8C25410F859143F5A216703A0C67ABDDA5D87341D7384B4AB84FBE499186D132';
 	$message = $form_state['values']['message'];
@@ -92,13 +123,17 @@ function ggw_mobile_notify_form_submit($form, $form_state) {
 	_ggw_mobile_push_notifications_send($key, $message, 'http://www.abouttrading.com/ggw/notification_push_user.php');
 }
 
-function _ggw_mobile_push_notifications_send($key, $message, $url) {
+function _ggw_mobile_push_notifications_send($key, $message, $url, $username = false) {
 	$fields_string = '';
 
 	$fields = array(
         "key"  => $key,
         "message" => $message
 	);
+
+	if($username) {
+		$fields['username'] = $username;
+	}
 
 	foreach($fields as $key=>$value) { $fields_string .= $key.'='.$value.'&'; }
 	rtrim($fields_string, '&');
