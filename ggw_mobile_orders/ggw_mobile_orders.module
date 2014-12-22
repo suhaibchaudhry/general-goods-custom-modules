@@ -94,6 +94,10 @@ function ggw_mobile_orders_order_unhook($oid) {
 	$data = json_decode($data);
 	$order = $data->data[0];
 	if($order) {
+		if($order->allowed_message) {
+			$content .= drupal_get_form('ggw_mobile_notify_user_form', $order->name);
+		}
+
 		$content .= '<div class="ggw-order-details">';
 
 		$content .= ggw_mobile_orders_item('Order ID', $order->oid);
