@@ -24,6 +24,11 @@ function ggw_mobile_notify_form($form_state) {
 		'#maxlength' => 256
 	);
 
+	$form['legacy'] = array(
+		'#type' => 'checkbox',
+		'#title' => t('Send to old unclassified signups')
+	);
+
 	$form['submit'] = array(
 		'#type' => 'submit',
 		'#value' => 'Broadcast Message'
@@ -36,9 +41,16 @@ function ggw_mobile_notify_form_submit($form, $form_state) {
 	$key = '8C25410F859143F5A216703A0C67ABDDA5D87341D7384B4AB84FBE499186D132';
 	$message = $form_state['values']['message'];
 
-	$url = 'http://www.abouttrading.com/ggw/notification_push.php';
+	if($form_state['values']['legacy']) {
+		_ggw_mobile_push_notifications_send($key, $message, 'http://www.abouttrading.com/ggw/notification_push.php');
+	}
 
+	_ggw_mobile_push_notifications_send($key, $message, 'http://www.abouttrading.com/ggw/notification_push_user.php');
+}
+
+function _ggw_mobile_push_notifications_send($key, $message, $url) {
 	$fields_string = '';
+
 	$fields = array(
         "key"  => $key,
         "message" => $message
@@ -69,10 +81,4 @@ function ggw_mobile_notify_form_submit($form, $form_state) {
 	} else {
 		drupal_set_message($status->message, 'error');
 	}
-
 }
-
-
-
-
-
