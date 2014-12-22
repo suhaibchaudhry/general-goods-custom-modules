@@ -7,7 +7,51 @@ function ggw_mobile_notify_menu() {
 		'access arguments' => array('administer users')
 	);
 
+	$items['user/%user/send_push_notifications'] = array(
+	    'title' => 'Mobile Notify',
+	    'access arguments' => array('view mobile orders'),
+	    'page callback' => '_ggw_mobile_notify_usertab',
+	    'page arguments' => array(1),
+	    'type' => MENU_LOCAL_TASK
+  	);
+
 	return $items;
+}
+
+function _ggw_mobile_notify_usertab($user) {
+	$key = '8C25410F859143F5A216703A0C67ABDDA5D87341D7384B4AB84FBE499186D132';
+	$fields_string = '';
+	$url = 'http://www.abouttrading.com/ggw/get_reg_status.php';
+
+	$fields = array(
+        "key"  => $key,
+        "username" => $user->name
+	);
+
+	foreach($fields as $key=>$value) { $fields_string .= $key.'='.$value.'&'; }
+	rtrim($fields_string, '&');
+
+	//open connection
+	$ch = curl_init();
+
+	//set the url, number of POST vars, POST data
+	curl_setopt($ch,CURLOPT_URL, $url);
+	curl_setopt($ch,CURLOPT_POST, count($fields));
+	curl_setopt( $ch, CURLOPT_RETURNTRANSFER, true );
+	curl_setopt($ch,CURLOPT_POSTFIELDS, $fields_string);
+
+	//execute post
+	$result = curl_exec($ch);
+
+	//close connection
+	curl_close($ch);
+
+	$status = json_decode($result);
+	if($status->status) {
+		return 'Push notification Form';
+	} else {
+		return $status->message;
+	}
 }
 
 function _ggw_mobile_notify() {
