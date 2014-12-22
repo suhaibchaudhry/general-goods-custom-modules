@@ -12,6 +12,14 @@ function ggw_mobile_orders_menu() {
 		'access arguments' => array('view mobile orders')
 	);
 
+	$items['admin/mobile-orders'] = array(
+		'type' => MENU_CALLBACK,
+		'title' => 'Mobile Orders',
+		'description' => 'Redirect mobile orders.',
+		'page callback' => 'ggw_mobile_order_redirect_dash',
+		'access arguments' => array('view mobile orders')
+	);
+
 	$items['admin/mobile-orders/%'] = array(
 		'type' => MENU_NORMAL_ITEM,
 		'title' => 'Mobile Order Details',
@@ -58,6 +66,10 @@ function ggw_mobile_orders_menu() {
 	*/
 
 	return $items;
+}
+
+function ggw_mobile_order_redirect_dash() {
+	drupal_goto('admin/store/mobile-orders/list');
 }
 
 function ggw_mobile_orders_render_user($name) {
