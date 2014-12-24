@@ -27,7 +27,7 @@ function pos_stock_management_inventory_list() {
 			$pos_in_stocks = db_query($sql, $start, $per_page);
 			$inventory_list = array();
 			while($pos_in_stock = db_fetch_object($pos_in_stocks)) {
-				$inventory_list[] = array('product_nid' => $pos_in_stock->product_nid, 'event_logs' => _pos_stock_management_item_history($pos_in_stock->product_nid), 'product' => _pos_stock_management_inline_embed($pos_in_stock->product_nid));
+				$inventory_list[] = array('product_nid' => $pos_in_stock->product_nid, 'product' => _pos_stock_management_inline_embed($pos_in_stock->product_nid));
 			}
 
 			pos_api_expose_respond(array('status' => true, 'inventory_list' => $inventory_list, 'total_pages' => ceil($total_items/$per_page)), true);
