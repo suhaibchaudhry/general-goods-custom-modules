@@ -552,6 +552,12 @@ function _ggw_pos_report_daily() {
 		$content .= theme('table', $header, $rows);
 	}
 
+	if($dp) {
+		$header = array('Total', '');
+		$rows = array(array('Total DP Revenue', uc_currency_format($total_transacs)));
+		$content .= theme('table', $header, $rows);
+	}
+
 	return $content;
 }
 
