@@ -116,6 +116,7 @@ if($uid) {
     </div>
 <?php print $content ?>
 <a href="#" class="print" onclick="javascript:return printAndClose();">Print</a>
+<a href="#" class="exit print" onclick="javascript:window.close();">Exit</a>
  </div>
 </body>
 </html>
