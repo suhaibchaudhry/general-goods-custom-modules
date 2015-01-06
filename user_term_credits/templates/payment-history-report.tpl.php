@@ -76,7 +76,7 @@ if($uid) {
   <script type="text/javascript">
   function printAndClose() {
     window.print();
-    setTimeout(function(){window.close();}, 1);
+    //setTimeout(function(){window.close();}, 1);
     return false;
   }
   </script>
