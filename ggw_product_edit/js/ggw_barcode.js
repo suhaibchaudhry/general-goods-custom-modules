@@ -88,3 +88,65 @@ Drupal.behaviors.price_total_check = function(context) {
 		}
 	});
 }
+
+Drupal.behaviors.profitCalc = function(context) {
+	var ignoreNonNumeric = function(e) {
+	  var charCode = e.keyCode || e.which;
+	  var charStr = String.fromCharCode(charCode);
+
+	  var reg = /^\d|\.$/;
+	  if(!reg.test(charStr)) {
+	    e.preventDefault();
+	  }
+	};
+
+	var percentageToCostAndSell = function($ele, $input, profit) {
+		var percentage = profit.val();
+		var cost = $('input#edit-cost').val();
+		if(!isNaN(percentage) && !isNaN(cost) && percentage !== '' && cost !== '') {
+			var sell_price = (parseFloat(cost)/(100-parseFloat(percentage)))*100;
+			$input.val(sell_price.toFixed(2));
+		}
+	};
+
+	var costAndSellToPercentage = function($ele, $input, init) {
+		var sell_price = $input.val();
+		var cost = $('input#edit-cost').val();
+		var profit = $ele.find('.profitInput');
+
+		if(!isNaN(sell_price) && !isNaN(cost) && sell_price !== '' && cost !== '') {
+ 			var markup_percentage = 100-((parseFloat(cost)*100)/parseFloat(sell_price));
+ 			profit.val(markup_percentage.toFixed(2));
+ 		}
+
+ 		if(init) {
+ 			profit.keypress(ignoreNonNumeric);
+ 			profit.keyup(function(e) {
+ 				percentageToCostAndSell($ele, $input, profit);
+ 			});
+ 		}
+	};
+
+	var attachCalculator = function(ele) {
+		var $ele = $(ele);
+		var $input = $ele.find('input');
+		$input.after('<div class="fieldContainer"></div>');
+		var $fieldContainer = $ele.find('.fieldContainer');
+		$fieldContainer.append($input);
+ 		$fieldContainer.append('<input class="profitInput" name="'+$ele.attr('id')+'"/><span class="profitInputSuffix">%</span>');
+
+ 		$ele.find('.description').css('clear', 'both');
+ 		$ele.find('.field-prefix').css('float', 'left');
+
+ 		costAndSellToPercentage($ele, $input, true);
+
+ 		$input.keypress(ignoreNonNumeric);
+ 		$input.keyup(function(e) {
+ 			costAndSellToPercentage($ele, $input, false);
+ 		});
+	};
+
+	$('#edit-sell-price-wrapper, #edit-role-prices-12-wrapper, #edit-role-prices-13-wrapper, #edit-role-prices-14-wrapper, #edit-role-prices-15-wrapper', context).each(function(i, e) {
+		attachCalculator(e);
+	});
+}
