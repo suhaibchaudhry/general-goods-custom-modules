@@ -130,6 +130,7 @@ Drupal.behaviors.profitCalc = function(context) {
 	var attachCalculator = function(ele) {
 		var $ele = $(ele);
 		var $input = $ele.find('input');
+		var $editCost = $('input#edit-cost');
 		$input.after('<div class="fieldContainer"></div>');
 		var $fieldContainer = $ele.find('.fieldContainer');
 		$fieldContainer.append($input);
@@ -144,6 +145,11 @@ Drupal.behaviors.profitCalc = function(context) {
  		$input.keyup(function(e) {
  			costAndSellToPercentage($ele, $input, false);
  		});
+
+		$editCost.keypress(ignoreNonNumeric);
+		$editCost.keyup(function(e) {
+			costAndSellToPercentage($ele, $input, false);
+		});
 	};
 
 	$('#edit-sell-price-wrapper, #edit-role-prices-12-wrapper, #edit-role-prices-13-wrapper, #edit-role-prices-14-wrapper, #edit-role-prices-15-wrapper', context).each(function(i, e) {
