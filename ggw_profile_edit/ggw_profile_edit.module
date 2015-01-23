@@ -13,7 +13,7 @@ function ggw_profile_edit_form_user_profile_form_alter(&$form, &$form_state) {
 }
 
 function ggw_profile_edit_menu() {
-  $items['admin/pos-api/add-customer'] = array(
+  $items['pos-api/customer/add-customer'] = array(
     'title' => 'Add customer',
     'description' => 'Populate inventory for an item.',
     'page callback' => 'ggw_profile_add_new_user',
@@ -25,16 +25,46 @@ function ggw_profile_edit_menu() {
 }
 
 function ggw_profile_add_new_user() {
-	$token = $_GET['token'];
-	$uid = _pos_api_expose_uid_from_token($token);
-	if($uid) {
-		drupal_add_js(drupal_get_path('module', 'ggw_profile_edit').'/js/conditional_fieldsets.js');
-		drupal_add_js(drupal_get_path('module', 'ggw_profile_edit').'/js/pos_signup_form.js');
-		drupal_add_css(drupal_get_path('module', 'ggw_profile_edit').'/css/embedded_signup.css');
+	$failed_response = array(
+		'status' => false,
+		'error' => 'Employee token has expired.'
+	);
 
-		return drupal_get_form('user_register');
+	$request = json_decode($_POST['request']);
+	$uid = _pos_api_expose_uid_from_token($request->token);
+
+	$firstName = trim($request->firstName);
+    $lastName = trim($request->lastName);
+    $accountId = trim($request->accountId);
+    $phone = trim($request->phone);
+    $email = trim($request->email);
+    $password = trim($request->password);
+    $taxId = trim($request->taxId);
+    $tobacco = trim($request->tobacco);
+    $tremarks = trim($request->tremarks);
+    $tdate = trim($request->tdate);
+    $st_one = trim($request->st_one);
+    $st_two = trim($request->st_two);
+    $city = trim($request->city);
+    $state = trim($request->state);
+    $zip = trim($request->zip);
+    $fax = trim($request->fax);
+
+	if($uid) {
+		$userCount = db_result(db_query("SELECT COUNT(*) FROM users WHERE name = '%s'", $accountId));
+		if($userCount == 0) {
+			pos_api_expose_respond(array(
+				'status' => true,
+				'error' => 'Customer account found.'
+			));
+		} else {
+			pos_api_expose_respond(array(
+				'status' => false,
+				'error' => 'Customer account number already exists.'
+			));
+		}
 	} else {
-		print "Access denied to user form.";
+		pos_api_expose_respond($failed_response);
 	}
 }
 
