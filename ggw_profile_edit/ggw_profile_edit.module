@@ -16,7 +16,7 @@ function ggw_profile_edit_menu() {
   $items['pos-api/customer/add-customer'] = array(
     'title' => 'Add customer',
     'description' => 'Populate inventory for an item.',
-    'page callback' => 'ggw_profile_add_new_user',
+    'page callback' => 'ggw_profile_add_new_user_ins',
     'access arguments' => array('access content'),
     'type' => MENU_CALLBACK
   );
@@ -24,7 +24,7 @@ function ggw_profile_edit_menu() {
   return $items;
 }
 
-function ggw_profile_add_new_user() {
+function ggw_profile_add_new_user_ins() {
 	$failed_response = array(
 		'status' => false,
 		'error' => 'Employee token has expired.'
@@ -57,6 +57,22 @@ function ggw_profile_add_new_user() {
 				'status' => true,
 				'error' => 'Customer account found.'
 			));
+
+			/*if($password) {
+				$password = md5($password);
+			} else {
+				$password = md5($accountId);
+			}
+
+			if(empty($email)) {
+				$email =  $accountId."@general-goods.com";
+			}
+
+			$sql = "INSERT INTO users (name, pass, mail, mode, sort, threshold, signature_format, created, access, login, status, timezone, data, timezone_name) VALUES('".$accountId."', '".$password."', '".$email."', '0', '0', '0', '0', '".time()."', '".time()."', '".time()."', '1', '-2600', NULL, 'America/Chicago');";
+			db_query($sql);
+			$uid_created = db_last_insert_id('users', 'uid');
+			$query = "INSERT INTO users_roles (uid, rid) VALUES('".$uid_created."', '9');";
+			db_query($query);*/
 		} else {
 			pos_api_expose_respond(array(
 				'status' => false,
