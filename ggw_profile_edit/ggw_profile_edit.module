@@ -33,6 +33,7 @@ function ggw_profile_add_new_user_ins() {
 	$request = json_decode($_POST['request']);
 	$uid = _pos_api_expose_uid_from_token($request->token);
 
+	$companyName = trim($request->companyName);
 	$firstName = trim($request->firstName);
     $lastName = trim($request->lastName);
     $accountId = trim($request->accountId);
