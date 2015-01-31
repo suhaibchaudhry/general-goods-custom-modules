@@ -511,6 +511,34 @@ function user_term_credits_theme() {
     'payment_history_report' => array(
       'template' => 'templates/payment-history-report',
       'arguments' => array('content' => null, 'uid' => null, 'report_title' => null)
+    ),
+    'invoice_payment_details' => array(
+      'arguments' => array('order' => null)
     )
   );
+}
+
+function theme_invoice_payment_details($order) {
+   return "Use theme to populate.";
+}
+
+function user_term_credits_order_pane() {
+  $panes = array();
+  $panes[] = array(
+    'id' => 'payments_made',
+    'callback' => '_user_term_credits_payment_summary',
+    'title' => t('Payments'),
+    'desc' => t('View the payments made.'),
+    'class' => 'abs-left',
+    'weight' => 8,
+    'show' => array('view'),
+  );
+
+  return $panes;
+}
+
+function _user_term_credits_payment_summary($op, $arg1) {
+   if($op == 'view') {
+	return theme('invoice_payment_details', $arg1);
+   }
 }
