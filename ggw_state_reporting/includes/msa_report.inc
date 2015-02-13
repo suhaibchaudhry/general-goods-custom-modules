@@ -95,7 +95,7 @@ function ggw_msa_generate_customer_report($start_date, $end_date, &$total_custom
 
 	$customers = db_query("SELECT uo.uid, uo.order_status, GROUP_CONCAT(DISTINCT uo.order_id ORDER BY uo.order_id ASC SEPARATOR ',') AS tickets FROM {uc_orders} uo
 	 INNER JOIN {pos_api_expose_transaction_log} tl ON tl.ticket_id = uo.order_id
-	 WHERE (uo.order_status = 'pos_completed' OR uo.order_status = 'pos_return_closed') AND tl.timestamp >= '%s' AND tl.timestamp <= '%s'
+	 WHERE (uo.order_status = 'pos_completed' OR uo.order_status = 'pos_return_closed') AND tl.timestamp >= '%s' AND tl.timestamp <= '%s' AND uo.uid > 0
 	 GROUP BY uo.uid, uo.order_status", $start_date, $end_date);
 
 	 $customers_displayed = array();
