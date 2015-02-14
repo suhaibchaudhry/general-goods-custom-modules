@@ -20,6 +20,15 @@ function ggw_product_edit_menu() {
 			'file' => 'include/admin_checks.inc'
 		);
 
+		$items['admin/walkin-tickets'] = array(
+			'title' => 'Walk-in Tickets',
+			'type' => MENU_CALLBACK,
+			'description' => 'Loads tickets walk-in.',
+			'page callback' => 'ggw_walk_in_tickets_list',
+			'access arguments' => array('view all orders'),
+			'file' => 'include/admin_checks.inc'
+		);
+
 		$items['admin/dp-tickets'] = array(
 			'title' => 'DP Tickets',
   			'type' => MENU_CALLBACK,
@@ -91,7 +100,7 @@ function ggw_product_edit_form_alter(&$form, $form_state, $form_id) {
 			'#default_value' => ggw_product_vendors_defaults($form['#node']->nid)
 		);
 	}
-	
+
 	if(strpos($form_id, 'uc_product_add_to_cart_form') !== FALSE) {
 		global $user;
 		if(empty($user->uid)) {
@@ -102,7 +111,7 @@ function ggw_product_edit_form_alter(&$form, $form_state, $form_id) {
 			unset($form['nid']);
 		}
 	}
-	
+
 	if(strpos($form_id, 'uc_product_add_to_cart_form_') !== FALSE) {
 		//dpm($form);
 		$form['#submit'][] = 'ggw_product_edit_add_to_cart_handler';
@@ -122,7 +131,7 @@ function ggw_product_vendors_defaults($nid) {
 		while($vendor = db_fetch_object($vendors)) {
 			$default_values[$vendor->vendor_uid] = $vendor->vendor_uid;
 		}
-		
+
 		return $default_values;
 	}
 }
@@ -132,17 +141,17 @@ function ggw_product_edit_nodeapi(&$node, $op, $a3 = NULL, $a4 = NULL) {
 		if($op == 'validate' || $op == 'delete') {
 			db_query("DELETE FROM {ggw_product_vendors} WHERE product_nid = %d", $node->nid);
 		}
-		
+
 		if($op == 'validate') {
 			drupal_add_css(drupal_get_path('module', 'ggw_product_edit').'/css/ggw_profile_edit.css');
-	
+
 			$base_query = "INSERT INTO {ggw_product_vendors} VALUES (%d, %d)";
-			
+
 			if(count($a3['vendors']['supplier']['#value']) > 1 && isset($a3['vendors']['supplier']['#value']["0"])) {
 				form_set_error('supplier', 'You cannot select vendors, when no vendors are associated.');
 				return;
 			}
-			
+
 			if(!isset($a3['vendors']['supplier']['#value']["0"])) {
 				foreach($a3['vendors']['supplier']['#value'] as $vendor_id) {
 					db_query($base_query, $node->nid, $vendor_id);

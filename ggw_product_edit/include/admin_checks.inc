@@ -224,7 +224,7 @@ function ggw_duplicate_transactions() {
 			$total_transacs += $transac->amount;
 		}
 
-	
+
 		$rows[] = array(
 			date('n/j/Y', $transac->timestamp),
 			$transac->register_id,
@@ -248,7 +248,7 @@ function ggw_inconsitent_tickets() {
 		FROM pos_api_expose_transaction_log cu
 		INNER JOIN uc_orders o ON cu.ticket_id = o.order_id
 		LEFT JOIN pos_api_expose_cash_log cl ON cu.cash_pid = cl.pid
-		WHERE ABS(cu.amount-o.order_total) > '0.01'");
+		WHERE ABS(cu.amount-o.order_total) > '0.01' OR (o.uid = '0' AND cu.cuid <> '0')");
 
 	$header = array('Customer', 'Employee', 'Ticket #', 'Closed Amount', 'Current Invoice Amount', 'Cash Paid', 'Change Made', 'Ticket Closing Amount', 'Date Created', 'Date Modified');
 	$rows = array();
@@ -313,4 +313,38 @@ function ggw_open_tickets_log() {
 	}
 
 	return theme('table', $header, $rows);
+}
+
+function ggw_walk_in_tickets_list() {
+	$content = '';
+	$tickets = db_query("SELECT DISTINCT uo.order_id FROM uc_order_products ucp INNER JOIN uc_orders uo ON ucp.order_id = uo.order_id WHERE ucp.nid IN (SELECT n.nid FROM uc_products up
+			INNER JOIN term_node tn ON up.nid = tn.nid
+ 			INNER JOIN node n ON up.nid = n.nid
+ 			INNER JOIN content_type_product ctp ON n.vid = ctp.vid
+			INNER JOIN ggw_state_reporting_terms sr ON sr.vid = tn.tid
+			WHERE setting > 1) AND uo.uid = '0'");
+
+	$header = array('Closed Walk-In Ticket w/ Tobacco');
+	$rows = array();
+	while($ticket = db_fetch_object($tickets)) {
+		$rows[] = array(
+			l($ticket->order_id, 'admin/store/orders/'.$ticket->order_id)
+		);
+	}
+
+	$content .= theme('table', $header, $rows);
+
+	$tickets = db_query("SELECT order_id, uid FROM uc_orders WHERE uid = '0'");
+
+	$header = array('Closed Walk-In Ticket');
+	$rows = array();
+	while($ticket = db_fetch_object($tickets)) {
+		$rows[] = array(
+			l($ticket->order_id, 'admin/store/orders/'.$ticket->order_id)
+		);
+	}
+
+	$content .= theme('table', $header, $rows);
+
+	return $content;
 }
