@@ -19,6 +19,13 @@ function ggw_mobile_export_feed() {
 	//$query .= 'DELETE FROM ggwdata WHERE 1;'."\n";
 	//$i = 0;
 	while($product = db_fetch_object($products)) {
+		$vid = db_result(db_query("SELECT vid FROM node WHERE nid = '%d'", $product->nid));
+
+		$sale_object = _pos_api_expose_get_sale_object($vid);
+		if(!empty($sale_object->field_sale_price_value)) {
+	        $product->sell_price = $sale_object->field_sale_price_value;
+	    }
+
 		$query .= 'INSERT INTO ggwdata (nid, title, model, list_price, cost, sell_price, packaging, image_url, unit_barcode) VALUES ('.$product->nid.', "'.ggw_mobile_sanatize($product->title).'", "'.ggw_mobile_sanatize($product->model).'", "'.$product->list_price.'", "'.$product->cost.'", "'.$product->sell_price.'", "'.ggw_mobile_sanatize($product->field_prod_packing_value).'", "'.str_replace('/files', '/files/imagecache/mobileimage', $product->filepath).'", "'.ggw_mobile_sanatize($product->field_prod_unit_barcode_value).'");';
 		//if($i == 10) {
 		//	break;
