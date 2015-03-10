@@ -197,7 +197,7 @@ function utc_payment_history($user, $themeless = false) {
 		$end_date = mktime(22, 0, 0);
 	}
 
-	$settlements_sql = "SELECT s.sid, u.uid, SUM(s.settlement_amount) AS settlement_amount, GROUP_CONCAT(u.order_id SEPARATOR ',') AS invoice_ids, GROUP_CONCAT(CAST(s.settlement_date as SIGNED)-CAST(u.consumption_date as SIGNED) SEPARATOR ',') AS days, GROUP_CONCAT(s.cuid SEPARATOR ',') AS cuids, s.payment_type, s.remarks, s.settlement_date FROM user_term_credits_settlements s LEFT JOIN user_term_credits_usages u ON s.cuid = u.cuid WHERE s.settlement_date >= '%s' AND s.settlement_date <= '%s' AND u.uid = '%d' GROUP BY u.uid, s.settlement_date ORDER BY s.settlement_date DESC";
+	$settlements_sql = "SELECT s.sid, u.uid, SUM(s.settlement_amount) AS settlement_amount, GROUP_CONCAT(u.order_id SEPARATOR ',') AS invoice_ids, GROUP_CONCAT(CAST(s.settlement_date as SIGNED)-CAST(u.consumption_date as SIGNED) SEPARATOR ',') AS days, GROUP_CONCAT(s.cuid SEPARATOR ',') AS cuids, s.payment_type, s.remarks, s.settlement_date FROM (SELECT * FROM user_term_credits_settlements si ORDER BY si.sid ASC) s LEFT JOIN user_term_credits_usages u ON s.cuid = u.cuid WHERE s.settlement_date >= '%s' AND s.settlement_date <= '%s' AND u.uid = '%d' GROUP BY u.uid, s.settlement_date ORDER BY s.settlement_date DESC";
 
 	$settlements = db_query($settlements_sql, $date, $end_date, $user->uid);
 	$header = array('Payment Date', 'Payment', 'Invoice #', 'Invoice Amnt.', 'Days', 'Remaining Bal.', 'Payby', 'Amount');
@@ -372,7 +372,7 @@ function utc_customer_statement($user, $themeless = false) {
 		);
 	}
 
-	$settlements_sql = "SELECT s.sid, u.uid, SUM(s.settlement_amount) AS settlement_amount, s.payment_type, s.remarks, s.settlement_date FROM user_term_credits_settlements s LEFT JOIN user_term_credits_usages u ON s.cuid = u.cuid WHERE s.settlement_date >= '%s' AND s.settlement_date <= '%s' AND u.uid = '%d' GROUP BY u.uid, s.settlement_date ORDER BY s.settlement_date DESC";
+	$settlements_sql = "SELECT s.sid, u.uid, SUM(s.settlement_amount) AS settlement_amount, s.payment_type, s.remarks, s.settlement_date FROM (SELECT * FROM user_term_credits_settlements si ORDER BY si.sid ASC) s LEFT JOIN user_term_credits_usages u ON s.cuid = u.cuid WHERE s.settlement_date >= '%s' AND s.settlement_date <= '%s' AND u.uid = '%d' GROUP BY u.uid, s.settlement_date ORDER BY s.settlement_date DESC";
 
 	$settlements = db_query($settlements_sql, $date, $end_date, $user->uid);
 
