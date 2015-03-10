@@ -3,7 +3,7 @@ define("RETAIL_TAX_ID", 2);
 define("WHOLESALE_TAX_ID", 5);
 
 function ggw_state_reporting_perm() {
-	return array('edit customer taxes');
+	return array('edit customer taxes', 'edit previous payments');
 }
 /*Taxonomy Term Configurations*/
 function ggw_state_reporting_menu() {
@@ -54,6 +54,15 @@ function ggw_state_reporting_menu() {
     'access callback' => 'uc_order_can_view_order',
     'access arguments' => array(1, 3),
     'type' => MENU_CALLBACK
+  );
+
+  $items['admin/store/reports/pos-sales/remove-sid/%'] = array(
+    'title' => t('Delete a payment'),
+    'page callback' => 'pos_api_expose_remove_payment_confirm',
+    'access arguments' => array('edit previous payments'),
+    'type' => MENU_CALLBACK,
+    'file' => 'includes/sales_reports.inc',
+    'page arguments' => array(5)
   );
 
   return $items;

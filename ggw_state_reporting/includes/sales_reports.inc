@@ -37,7 +37,7 @@ function _ggw_pos_report_daily() {
 			$transaction_sql_inject = "";
 		}
 
-		$settlements_sql = "SELECT s.sid, u.uid, SUM(s.settlement_amount) AS settlement_amount, s.payment_type, s.remarks, s.settlement_date, s.euid, s.register_id FROM user_term_credits_settlements s LEFT JOIN user_term_credits_usages u ON s.cuid = u.cuid WHERE s.settlement_date >= '%s' AND s.settlement_date <= '%s' ".$settlement_sql_inject." GROUP BY u.uid, s.settlement_date ORDER BY s.settlement_date ASC";
+		$settlements_sql = "SELECT s.sid, u.uid, SUM(s.settlement_amount) AS settlement_amount, s.payment_type, s.remarks, s.settlement_date, s.euid, s.register_id FROM (SELECT * FROM user_term_credits_settlements si ORDER BY si.sid ASC) s LEFT JOIN user_term_credits_usages u ON s.cuid = u.cuid WHERE s.settlement_date >= '%s' AND s.settlement_date <= '%s' ".$settlement_sql_inject." GROUP BY u.uid, s.settlement_date ORDER BY s.settlement_date ASC";
 
 		$settlements = db_query($settlements_sql, $start_date, $end_date);
 
@@ -164,6 +164,10 @@ function _ggw_pos_report_daily() {
 					}
 				}
 				$i++;
+			}
+
+			if(user_access('edit previous payments')) {
+				$column_1 .= l('Delete Payment', 'admin/store/reports/pos-sales/remove-sid/'.$settlement->sid);
 			}
 
 			$rows[] = array(
@@ -601,4 +605,54 @@ function pos_api_expose_clear_dp_form_submit($form_state) {
 	}
 
 	drupal_set_message("DP tickets were successfully removed.");
+}
+
+function pos_api_expose_remove_payment_confirm($sid) {
+	return drupal_get_form('pos_api_expose_remove_payment_confirm_form', $sid);	
+}
+
+function pos_api_expose_remove_payment_confirm_form($form_state, $sid) {
+	$form = array();
+	$uri = referer_uri();
+	$form['return_uri'] = array('#type' => 'value', '#value' => $uri);
+	$form['payment_sid'] = array('#type' => 'value', '#value' => $sid);
+	return confirm_form($form, 'Are you sure want to delete this payment?', $uri);
+}
+
+function pos_api_expose_remove_payment_confirm_form_submit($form, &$form_state) {
+	drupal_set_message('Payment Deleted');
+	pos_api_expose_remove_payments($form_state['values']['payment_sid']);
+	drupal_goto($form_state['values']['return_uri']);
+}
+
+function pos_api_expose_remove_payments($sid) {
+	$cuid = db_fetch_object(db_query("SELECT cs.settlement_date, cs.euid, cs.register_id FROM user_term_credits_settlements cs WHERE cs.sid = '%d'", $sid));
+	$cuids = db_query("SELECT cs.cuid FROM user_term_credits_settlements cs WHERE cs.settlement_date = '%s' AND  cs.euid = '%s' AND cs.register_id = '%s'", $cuid->settlement_date, $cuid->euid, $cuid->register_id);
+
+	while($cuid_dp = db_result($cuids)) {
+		db_query("UPDATE user_term_credits_usages SET settled = '0' WHERE cuid = '%d'", $cuid_dp);
+	}
+
+	pos_api_expose_remove_payment_for_sid($sid);
+
+	db_query("DELETE FROM user_term_credits_settlements WHERE settlement_date = '%s' AND  euid = '%s' AND register_id = '%s'", $cuid->settlement_date, $cuid->euid, $cuid->register_id);
+}
+
+function pos_api_expose_remove_payment_for_sid($sid) {
+	if($sid) {
+		db_query("DELETE FROM user_term_credits_cash_log WHERE sid = '%d'", $sid);
+
+		db_query("DELETE FROM user_term_credits_check_log WHERE sid = '%d'", $sid);
+	
+		db_query("DELETE FROM user_term_credits_credit_card_log WHERE sid = '%d'", $sid);
+	
+		db_query("DELETE FROM user_term_credits_money_order_log WHERE sid = '%d'", $sid);
+
+		$rma_pid = db_result(db_query("SELECT rma_pid FROM user_term_credits_rma_log WHERE sid = '%d'", $sid));
+
+		if($rma_pid) {
+			db_query("DELETE FROM pos_api_expose_rma_refund_log WHERE pid = '%d'", $rma_pid);
+			db_query("DELETE FROM user_term_credits_rma_log WHERE sid = '%d'", $sid);
+		}
+	}
 }
