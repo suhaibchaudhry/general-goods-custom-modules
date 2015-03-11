@@ -197,7 +197,7 @@ function ggw_qr_codes_generate($items, $header = '', $no_found_message = '') {
 		$pdf->setPageUnit('in');
 	}
 
-	$pdf->Output('newpdf.pdf', 'I');	
+	$pdf->Output('customer_lables.pdf', 'D');	
 }
 
 function ggw_qr_codes_get_cust_prods($uid) {
