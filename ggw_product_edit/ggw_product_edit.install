@@ -41,9 +41,7 @@ function ggw_product_edit_schema() {
         		'default' => 0
       		)
 		),
-		'indexes' => array(
-    		'nid' => array('product_nid'),
-    	)
+		'primary key' => array('qid')
 	);
 
 	return $schema;
@@ -57,7 +55,7 @@ function ggw_product_edit_uninstall() {
 	drupal_uninstall_schema('ggw_product_edit');
 }
 
-function ggw_product_edit_update_6014() {
+function ggw_product_edit_update_6017() {
 	$res = array();
 	$table_name = 'ggw_product_label_queue';
 	$table = drupal_get_schema_unprocessed('ggw_product_edit', $table_name);
