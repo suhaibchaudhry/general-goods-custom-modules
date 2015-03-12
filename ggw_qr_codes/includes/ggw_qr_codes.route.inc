@@ -64,7 +64,7 @@ function ggw_qr_code_queue_list() {
 }
 
 function _ggw_qr_code_queue_list() {
-	$sql = "SELECT g.qid, n.nid, n.title, up.model FROM ggw_product_label_queue g INNER JOIN node n ON n.nid = g.product_nid INNER JOIN uc_products up ON n.vid = up.vid";
+	$sql = "SELECT g.qid, n.nid, n.title, up.model, ctp.field_prod_packing_value FROM ggw_product_label_queue g INNER JOIN node n ON n.nid = g.product_nid INNER JOIN uc_products up ON n.vid = up.vid INNER JOIN content_type_product ctp ON n.vid = ctp.vid";
 	$items = db_query($sql);
 
 	return $items;
@@ -76,7 +76,8 @@ function ggw_qr_codes_print_large_labels() {
 	while($item = db_fetch_object($item_list)) {
 		$items[] = array(
 			'name' => $item->title,
-			'barcode' => $item->model
+			'barcode' => $item->model,
+			'packaging' => $item->field_prod_packing_value
 		);
 	}
 
@@ -288,7 +289,7 @@ function ggw_qr_codes_generate_large($items, $header = '', $no_found_message = '
 	//module_load_include('inc', 'ggw_qr_codes', 'includes/pdf');
 	
 	$margin = array('left' => .27, 'top' => .5, 'right' => .31);
-	$box = array('w' => 2.625, 'h' => 1, 'margin' => 0);
+	$box = array('w' => 4, 'h' => 2.5, 'margin' => 0);
 	
 	$style = array(
     	'border' => 0,
@@ -296,8 +297,8 @@ function ggw_qr_codes_generate_large($items, $header = '', $no_found_message = '
     	'hpadding' => 0.19685,
     	'fgcolor' => array(0,0,0),
     	'bgcolor' => false, //array(255,255,255)
-    	'module_width' => 3, // width of a single module in points
-    	'module_height' => 3 // height of a single module in points
+    	'module_width' => 5, // width of a single module in points
+    	'module_height' => 6 // height of a single module in points
 	);
 	
 	// initiate PDF
@@ -315,13 +316,13 @@ function ggw_qr_codes_generate_large($items, $header = '', $no_found_message = '
 	$pdf->startPage('P', 'Letter');
 
 	$pdf->setDrawColor(0, 0, 0);
-	$pdf->SetFont("helvetica", "N", 9);
+	$pdf->SetFont("helvetica", "N", 11);
 	
 	if(count($items) > 0) {
 		$i = 0;
 		foreach($items as $item) {
-			$row = floor($i/3);
-			$col = $i%3;
+			$row = floor($i/2);
+			$col = $i%2;
 			
 			if($col == 0) {
 				$pad = 0;
@@ -336,7 +337,7 @@ function ggw_qr_codes_generate_large($items, $header = '', $no_found_message = '
 			
 			
 			$pdf->setPageUnit('mm');
-			$pdf->writeHTMLCell(ggw_qr_codes_InToMM($box['w'])-25, ggw_qr_codes_InToMM($box['h'])-3, ggw_qr_codes_InToMM($x)+25, ggw_qr_codes_InToMM($y)+3, '<strong>'.$item['name'].'</strong>'.'<br />'.'<strong>UPC: </strong>'.$item['barcode'], 0);
+			$pdf->writeHTMLCell(ggw_qr_codes_InToMM($box['w'])-40, ggw_qr_codes_InToMM($box['h'])-3, ggw_qr_codes_InToMM($x)+40, ggw_qr_codes_InToMM($y)+3, '<strong>'.$item['name'].'</strong>'.'<br /><br />'.'<strong>UPC: </strong>'.$item['barcode'].'<br /><br /><strong>PCKG.: </strong>'.$item['packaging'], 0);
 			$pdf->setPageUnit('in');
 			
 			//$pdf->Rect($x, $y, $box['w'], $box['h'], '', 'LTRB', array(0, 0, 0));
@@ -345,7 +346,7 @@ function ggw_qr_codes_generate_large($items, $header = '', $no_found_message = '
 			
 			$i++;
 			
-			if($i == 30) {
+			if($i == 8) {
 				$i = 0;
 				
 				$pdf->setPageUnit('mm');
