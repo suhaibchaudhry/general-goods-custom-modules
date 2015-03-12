@@ -1,14 +1,87 @@
 <?php
 function ggw_qr_codes_generate_store() {
 	drupal_add_css(drupal_get_path('module', 'ggw_qr_codes').'/css/ggw_qr_codes.css');
+	$content .= '<div class="qr-queue">';
+	$content .= '<h2>Print Queued Labels:</h2>';
+	$content .= ggw_qr_codes_generate_label_queue();
+	$content .= '</div>';
+
 	$tree = taxonomy_get_tree(7, 0, -1, 1);
-	$content = '<div class="qr-by-dept">';
+	$content .= '<div class="qr-by-dept">';
 	$content .= '<h2>Print by Departments:</h2>';
 
 	$content .= ggw_qr_codes_theme_taxonomy_nested_tree($tree);
 	$content .= '</div>';
 	
 	return $content;
+}
+
+function ggw_qr_codes_generate_label_queue() {
+	$header = array('Queue #', 'Product Name');
+	$rows = ggw_qr_code_queue_list();	
+
+	$content = theme('table', $header, $rows);
+	$content .= drupal_get_form('ggw_qr_code_label_form');
+	return $content;
+}
+
+function ggw_qr_code_label_form() {
+	$form = array();
+
+	$form['flush'] = array(
+		'#type' => 'checkbox',
+		'#title' => 'Clear Queue'
+	);
+
+
+	$form['submit'] = array(
+		'#type' => 'submit',
+		'#value' => 'Generate Labels'
+	);
+
+	return $form;
+}
+
+function ggw_qr_code_label_form_submit($form, $form_state) {
+	if($form_state['values']['flush']) {
+		db_query("DELETE FROM ggw_product_label_queue WHERE 1");
+	}
+
+	ggw_qr_codes_print_large_labels();
+}
+
+function ggw_qr_code_queue_list() {
+	$items = _ggw_qr_code_queue_list();
+	$rows = array();
+	while($item = db_fetch_object($items)) {
+		$rows[] = array(
+			$item->qid,
+			l($item->title, 'node/'.$item->nid)
+		);
+	}
+
+	return $rows;
+}
+
+function _ggw_qr_code_queue_list() {
+	$sql = "SELECT g.qid, n.nid, n.title, up.model FROM ggw_product_label_queue g INNER JOIN node n ON n.nid = g.product_nid INNER JOIN uc_products up ON n.vid = up.vid";
+	$items = db_query($sql);
+
+	return $items;
+}
+
+function ggw_qr_codes_print_large_labels() {
+	$item_list = _ggw_qr_code_queue_list();
+	$items = array();
+	while($item = db_fetch_object($item_list)) {
+		$items[] = array(
+			'name' => $item->title,
+			'barcode' => $item->model
+		);
+	}
+
+	$header = 'Shelf Label Queue';
+	ggw_qr_codes_generate($items, $header, "No products were present in the shelf label queue.");
 }
 
 function ggw_qr_codes_generate_store_shelf($tid) {
