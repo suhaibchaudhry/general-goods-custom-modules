@@ -413,6 +413,7 @@ function ggw_mobile_shelf_label_orders() {
 }
 
 function ggw_mobile_shelf_label_order($lid) {
+	module_load_include('inc', 'ggw_qr_codes', 'includes/ggw_qr_codes.route');
 	$_GET['lid'] = $lid;
 	$data = ggw_mobile_labels_rpc(_ggw_mobile_construct_query());
 	$data = json_decode($data);

@@ -163,3 +163,119 @@ function ggw_qr_codes_update_unit_barcode() {
 		print json_encode(array('status' => false, 'message' => 'Invalid RPC invocations.'));
 	}
 }
+
+function ggw_qr_codes_gen_form() {
+	$form = array('#attributes' => array('target' => '_blank'));
+	
+	$form['submit'] = array(
+		'#type' => 'submit',
+		'#value' => 'Generate Labels'
+	);
+	
+	return $form;
+}
+
+function ggw_qr_codes_gen_form_submit($form, $form_state) {
+	$items = array();
+	$items_posted = $form['#post']['item'];
+	//Remove Duplicates
+	//Add Pictures
+	if(is_array($items_posted)) {
+		$items_posted = array_unique($items_posted);
+		$i = 0;
+		foreach($items_posted as $item) {
+			$product = db_fetch_object(db_query("SELECT n.title, up.model FROM node n INNER JOIN uc_products up ON n.vid = up.vid WHERE n.nid = '%d'", $item));
+			$items[$i]['name'] = ggw_qr_codes_truncate($product->title, 35);
+			$items[$i]['barcode'] = $product->model;
+			$i++;
+			
+		}
+	}
+
+	ggw_qr_codes_generate($items, $header, "No products were scanned.");
+}
+
+function ggw_qr_codes_generate($items, $header = '', $no_found_message = '') {
+	//require_once(libraries_get_path('tcpdf') .'/config/lang/eng.php');
+	require_once(libraries_get_path('tcpdf') .'/tcpdf.php');
+	//require_once(libraries_get_path('fpdi') .'/fpdi.php');
+	
+	//module_load_include('inc', 'ggw_qr_codes', 'includes/pdf');
+	
+	$margin = array('left' => .27, 'top' => .5, 'right' => .31);
+	$box = array('w' => 2.625, 'h' => 1, 'margin' => 0);
+	
+	$style = array(
+    	'border' => 0,
+   		'vpadding' => 0.19685,
+    	'hpadding' => 0.19685,
+    	'fgcolor' => array(0,0,0),
+    	'bgcolor' => false, //array(255,255,255)
+    	'module_width' => 3, // width of a single module in points
+    	'module_height' => 3 // height of a single module in points
+	);
+	
+	// initiate PDF
+	$pdf = new TCPDF();
+	//$pdf->SetMargins(PDF_MARGIN_LEFT, 40, PDF_MARGIN_RIGHT);
+	//$pdf->SetAutoPageBreak(true, 40);
+	$pdf->setFontSubsetting(false);
+	
+	$pdf->setTextColor(0, 0, 0);
+	
+	$pdf->setPageUnit('in');
+
+	//$pdf->SetMargins(.27, .5, .31);
+	// add a page
+	$pdf->startPage('P', 'Letter');
+
+	$pdf->setDrawColor(0, 0, 0);
+	$pdf->SetFont("helvetica", "N", 9);
+	
+	if(count($items) > 0) {
+		$i = 0;
+		foreach($items as $item) {
+			$row = floor($i/3);
+			$col = $i%3;
+			
+			if($col == 0) {
+				$pad = 0;
+			} elseif($col == 1) {
+				$pad = 0.11811;	
+			} else {
+				$pad = 0.11811*2;	
+			}
+			
+			$x = $pad+$margin['left']+($col*($box['w']+$box['margin']));
+			$y = 0.03+$margin['top']+($row*$box['h']);
+			
+			
+			$pdf->setPageUnit('mm');
+			$pdf->writeHTMLCell(ggw_qr_codes_InToMM($box['w'])-25, ggw_qr_codes_InToMM($box['h'])-3, ggw_qr_codes_InToMM($x)+25, ggw_qr_codes_InToMM($y)+3, '<strong>'.$item['name'].'</strong>'.'<br />'.'<strong>UPC: </strong>'.$item['barcode'], 0);
+			$pdf->setPageUnit('in');
+			
+			//$pdf->Rect($x, $y, $box['w'], $box['h'], '', 'LTRB', array(0, 0, 0));
+			
+			$pdf->write2DBarcode($item['barcode'], 'QRCODE,L', $x, $y, 0, 0, $style, 'N');
+			
+			$i++;
+			
+			if($i == 30) {
+				$i = 0;
+				
+				$pdf->setPageUnit('mm');
+				$pdf->writeHTMLCell(ggw_qr_codes_InToMM(5)-25, ggw_qr_codes_InToMM(1)-3, 8, 4, '<strong>'.$header.'</strong>', 0);
+				$pdf->setPageUnit('in');
+				
+				$pdf->AddPage();
+			}
+		}
+	} else {
+		$pdf->SetFont("helvetica", "N", 12);
+		$pdf->setPageUnit('mm');
+		$pdf->MultiCell(ggw_qr_codes_InToMM(4.8), 0, $no_found_message, 0, 'C', FALSE, 1, 0, 50);
+		$pdf->setPageUnit('in');
+	}
+
+	$pdf->Output('customer_lables.pdf', 'D');	
+}
