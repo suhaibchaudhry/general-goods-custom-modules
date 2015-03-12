@@ -24,6 +24,28 @@ function ggw_product_edit_schema() {
     	)
 	);
 
+	$schema['ggw_product_label_queue'] = array(
+		'description' => 'Stores queue for product labels.',
+		'fields' => array(
+			'qid' => array(
+				'type' => 'serial',
+				'not null' => TRUE,
+				'unsigned' => TRUE,
+				'description' => 'The id of queue item'
+			),
+			'product_nid' => array(
+        		'description' => 'Node ID of a product.',
+        		'type' => 'int',
+        		'unsigned' => TRUE,
+        		'not null' => TRUE,
+        		'default' => 0
+      		)
+		),
+		'indexes' => array(
+    		'nid' => array('product_nid'),
+    	)
+	);
+
 	return $schema;
 }
 
@@ -33,4 +55,11 @@ function ggw_product_edit_install() {
 
 function ggw_product_edit_uninstall() {
 	drupal_uninstall_schema('ggw_product_edit');
+}
+
+function ggw_product_edit_update_6014() {
+	$res = array();
+	$table_name = 'ggw_product_label_queue';
+	$table = drupal_get_schema_unprocessed('ggw_product_edit', $table_name);
+	db_create_table($res, $table_name, $table);
 }

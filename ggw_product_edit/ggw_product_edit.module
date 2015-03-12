@@ -99,6 +99,17 @@ function ggw_product_edit_form_alter(&$form, $form_state, $form_id) {
 			'#multiple' => true,
 			'#default_value' => ggw_product_vendors_defaults($form['#node']->nid)
 		);
+
+		$form['label_print'] = array(
+			'#type' => 'fieldset',
+			'#title' => 'Shelf Labels',
+			'#weight' => 55
+		);
+
+		$form['label_print']['push_product'] = array(
+			'#type' => 'checkbox',
+			'#title' => 'Send to Shelf Label Print Queue'
+		);
 	}
 
 	if(strpos($form_id, 'uc_product_add_to_cart_form') !== FALSE) {
@@ -143,6 +154,7 @@ function ggw_product_edit_nodeapi(&$node, $op, $a3 = NULL, $a4 = NULL) {
 		}
 
 		if($op == 'validate') {
+			dpm($a3);
 			drupal_add_css(drupal_get_path('module', 'ggw_product_edit').'/css/ggw_profile_edit.css');
 
 			$base_query = "INSERT INTO {ggw_product_vendors} VALUES (%d, %d)";
