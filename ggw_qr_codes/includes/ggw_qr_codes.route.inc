@@ -74,10 +74,12 @@ function ggw_qr_codes_print_large_labels() {
 	$item_list = _ggw_qr_code_queue_list();
 	$items = array();
 	while($item = db_fetch_object($item_list)) {
+		$node = node_load($item->nid);
 		$items[] = array(
 			'name' => $item->title,
 			'barcode' => $item->model,
-			'packaging' => $item->field_prod_packing_value
+			'packaging' => $item->field_prod_packing_value,
+			'sell_price' => uc_currency_format($node->sell_price, false)
 		);
 	}
 
@@ -337,7 +339,7 @@ function ggw_qr_codes_generate_large($items, $header = '', $no_found_message = '
 			
 			
 			$pdf->setPageUnit('mm');
-			$pdf->writeHTMLCell(ggw_qr_codes_InToMM($box['w'])-40, ggw_qr_codes_InToMM($box['h'])-3, ggw_qr_codes_InToMM($x)+40, ggw_qr_codes_InToMM($y)+3, '<strong>'.$item['name'].'</strong>'.'<br /><br />'.'<strong>UPC: </strong>'.$item['barcode'].'<br /><br /><strong>PCKG.: </strong>'.$item['packaging'], 0);
+			$pdf->writeHTMLCell(ggw_qr_codes_InToMM($box['w'])-40, ggw_qr_codes_InToMM($box['h'])-3, ggw_qr_codes_InToMM($x)+40, ggw_qr_codes_InToMM($y)+3, '<strong>'.$item['name'].'</strong>'.'<br /><br />'.'<strong>UPC: </strong>'.$item['barcode'].'<br /><br /><strong>PCKG: </strong>'.$item['packaging'].'<br /><br /><strong>PRICE: </strong>'.$item['sell_price'], 0);
 			$pdf->setPageUnit('in');
 			
 			//$pdf->Rect($x, $y, $box['w'], $box['h'], '', 'LTRB', array(0, 0, 0));
