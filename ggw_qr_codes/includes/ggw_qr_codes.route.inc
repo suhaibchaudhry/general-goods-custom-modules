@@ -353,10 +353,11 @@ function ggw_qr_codes_generate_large($items, $header = '', $no_found_message = '
 			
 			
 			$pdf->setPageUnit('mm');
-			$pdf->writeHTMLCell(ggw_qr_codes_InToMM($box['w'])-40, ggw_qr_codes_InToMM($box['h'])-3, ggw_qr_codes_InToMM($x)+40, ggw_qr_codes_InToMM($y)+3, '<strong>'.$item['name'].'</strong>'.'<br /><br />'.'<strong>UPC: </strong>'.$item['barcode'].'<br /><strong>PCKG: </strong>'.$item['packaging'].'<br /><br /><span style="font-size: 15pt;"><strong>PRICE: </strong>'.$item['sell_price'].'</span><br /><br />'.'<img height="50" src="'.base_path().$item['image_path'].'" alt="" />', 0);
+
+			$pdf->writeHTMLCell(ggw_qr_codes_InToMM($box['w'])-40, ggw_qr_codes_InToMM($box['h'])-3, ggw_qr_codes_InToMM($x)+40, ggw_qr_codes_InToMM($y)+3, '<strong>'.$item['name'].'</strong>'.'<br /><br />'.'<strong>UPC: </strong>'.$item['barcode'].'<br /><strong>PCKG: </strong>'.$item['packaging'].'<div style="text-align: center;"><img height="50" src="'.base_path().$item['image_path'].'" alt="" /></div>'.'<div style="font-size: 15pt; text-align: center;"><strong>PRICE: </strong>'.$item['sell_price'].'</span>', 0);
+
+			$pdf->RoundedRect(ggw_qr_codes_InToMM($x), ggw_qr_codes_InToMM($y), ggw_qr_codes_InToMM($box['w']), ggw_qr_codes_InToMM($box['h'])-3, 3, '1110');
 			$pdf->setPageUnit('in');
-			
-			//$pdf->Rect($x, $y, $box['w'], $box['h'], '', 'LTRB', array(0, 0, 0));
 			
 			$pdf->write2DBarcode($item['barcode'], 'QRCODE,L', $x, $y, 0, 0, $style, 'N');
 			
