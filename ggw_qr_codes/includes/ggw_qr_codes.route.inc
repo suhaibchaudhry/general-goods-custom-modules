@@ -81,7 +81,7 @@ function ggw_qr_codes_print_large_labels() {
 		}
 
 		$items[] = array(
-			'name' => $item->title,
+			'name' => ggw_qr_codes_generate_cut($item->title),
 			'barcode' => $item->model,
 			'packaging' => $item->field_prod_packing_value,
 			'sell_price' => uc_currency_format($node->sell_price, false),
@@ -91,6 +91,14 @@ function ggw_qr_codes_print_large_labels() {
 
 	$header = 'Shelf Label Queue';
 	ggw_qr_codes_generate_large($items, $header, "No products were present in the shelf label queue.");
+}
+
+function ggw_qr_codes_generate_cut($str, $len=70) {
+	if (strlen($str) > $len) {
+		return substr($str, 0, $len-2) . '...';
+	} else {
+		return $str;
+	}
 }
 
 function ggw_qr_codes_generate_store_shelf($tid) {
