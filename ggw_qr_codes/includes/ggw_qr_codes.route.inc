@@ -75,11 +75,17 @@ function ggw_qr_codes_print_large_labels() {
 	$items = array();
 	while($item = db_fetch_object($item_list)) {
 		$node = node_load($item->nid);
+		$image_path = $node->field_image_cache[0]['filepath'];
+		if(empty($image_path) || !file_exists($image_path)) {
+			$image_path = 'sites/general-goods.com/files/imagefield_default_images/notfound_0.png';
+		}
+
 		$items[] = array(
 			'name' => $item->title,
 			'barcode' => $item->model,
 			'packaging' => $item->field_prod_packing_value,
-			'sell_price' => uc_currency_format($node->sell_price, false)
+			'sell_price' => uc_currency_format($node->sell_price, false),
+			'image_path' => $image_path
 		);
 	}
 
@@ -300,7 +306,7 @@ function ggw_qr_codes_generate_large($items, $header = '', $no_found_message = '
     	'fgcolor' => array(0,0,0),
     	'bgcolor' => false, //array(255,255,255)
     	'module_width' => 5, // width of a single module in points
-    	'module_height' => 6 // height of a single module in points
+    	'module_height' => 5 // height of a single module in points
 	);
 	
 	// initiate PDF
@@ -318,7 +324,7 @@ function ggw_qr_codes_generate_large($items, $header = '', $no_found_message = '
 	$pdf->startPage('P', 'Letter');
 
 	$pdf->setDrawColor(0, 0, 0);
-	$pdf->SetFont("helvetica", "N", 11);
+	$pdf->SetFont("helvetica", "N", 9);
 	
 	if(count($items) > 0) {
 		$i = 0;
@@ -339,7 +345,7 @@ function ggw_qr_codes_generate_large($items, $header = '', $no_found_message = '
 			
 			
 			$pdf->setPageUnit('mm');
-			$pdf->writeHTMLCell(ggw_qr_codes_InToMM($box['w'])-40, ggw_qr_codes_InToMM($box['h'])-3, ggw_qr_codes_InToMM($x)+40, ggw_qr_codes_InToMM($y)+3, '<strong>'.$item['name'].'</strong>'.'<br /><br />'.'<strong>UPC: </strong>'.$item['barcode'].'<br /><br /><strong>PCKG: </strong>'.$item['packaging'].'<br /><br /><strong>PRICE: </strong>'.$item['sell_price'], 0);
+			$pdf->writeHTMLCell(ggw_qr_codes_InToMM($box['w'])-40, ggw_qr_codes_InToMM($box['h'])-3, ggw_qr_codes_InToMM($x)+40, ggw_qr_codes_InToMM($y)+3, '<strong>'.$item['name'].'</strong>'.'<br /><br />'.'<strong>UPC: </strong>'.$item['barcode'].'<br /><strong>PCKG: </strong>'.$item['packaging'].'<br /><br /><span style="font-size: 15pt;"><strong>PRICE: </strong>'.$item['sell_price'].'</span><br /><br />'.'<img height="50" src="'.base_path().$item['image_path'].'" alt="" />', 0);
 			$pdf->setPageUnit('in');
 			
 			//$pdf->Rect($x, $y, $box['w'], $box['h'], '', 'LTRB', array(0, 0, 0));
