@@ -77,7 +77,9 @@ function pos_stock_management_inventory_add_stock() {
 
 			pos_api_expose_respond(array(
 					'status' => true,
-					'message' => 'Stock has been updated successfully.'
+					'message' => 'Stock has been updated successfully.',
+					'product_nid' => $request->product_nid,
+					'product' => _pos_stock_management_inline_embed($request->product_nid)
 				), true);
 		}
 	}
