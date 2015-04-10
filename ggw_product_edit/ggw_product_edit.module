@@ -164,7 +164,7 @@ function ggw_product_edit_nodeapi(&$node, $op, $a3 = NULL, $a4 = NULL) {
 			$base_query = "INSERT INTO {ggw_product_vendors} VALUES (%d, %d)";
 
 			if(count($a3['vendors']['supplier']['#value']) > 1 && isset($a3['vendors']['supplier']['#value']["0"])) {
-				form_set_error('supplier', 'You cannot select vendors, when no vendors are associated.');
+				form_set_error('supplier', 'You cannot select vendors, when "No Vendor Associated" option is selected.');
 				return;
 			}
 
