@@ -45,7 +45,7 @@ Drupal.behaviors.barcode_reader = function(context) {
 					data:{upcCode: this.value},
 					dataType: 'json',
 					success:  function(product) {
-						console.log(product);
+						//console.log(product);
 						if(!product.error && (product.status == 'success')) {
 							var title = $('input#edit-title', context);
 							var packing = $('input#edit-field-prod-packing-0-value', context);
