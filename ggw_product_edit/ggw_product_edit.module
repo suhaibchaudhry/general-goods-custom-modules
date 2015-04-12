@@ -147,6 +147,43 @@ function ggw_product_vendors_defaults($nid) {
 	}
 }
 
+function ggw_product_edit_get_barcode_nids($nid, $barcodes) {
+	$barcodes_list = db_placeholders($barcodes, 'varchar');
+	$dupes = array();
+	$queries = array();
+
+	$sql = array("SELECT up.nid FROM uc_products up
+	 LEFT JOIN content_type_product ctp ON up.vid = ctp.vid
+	 WHERE up.nid <> %d AND (up.model IN (".$barcodes_list.")
+	 OR ctp.field_prod_unit_barcode_value IN (".$barcodes_list."))", $nid);
+
+	$queries['nids'] = call_user_func_array('db_query',
+		array_merge(
+			$sql,
+			$barcodes,
+			$barcodes
+		)
+	);
+	
+	$sql = array("SELECT ab.nid FROM content_field_additional_barcodes ab
+		WHERE ab.nid <> %d AND ab.field_additional_barcodes_value IN (".$barcodes_list.")", $nid);
+
+	$queries['anids'] = call_user_func_array('db_query',
+		array_merge(
+			$sql,
+			$barcodes
+		)
+	);
+
+	foreach($queries as $result) {
+		while($node = db_fetch_object($result)) {
+			$dupes[] = $node->nid;
+		}
+	}
+
+	return array_unique($dupes);
+}
+
 function ggw_product_edit_nodeapi(&$node, $op, $a3 = NULL, $a4 = NULL) {
 	if($node->type == 'product') {
 		if($op == 'validate' || $op == 'delete') {
@@ -154,13 +191,43 @@ function ggw_product_edit_nodeapi(&$node, $op, $a3 = NULL, $a4 = NULL) {
 		}
 
 		if($op == 'validate') {
+			//Vendor Fields CSS
+			drupal_add_css(drupal_get_path('module', 'ggw_product_edit').'/css/ggw_profile_edit.css');
+
+			//Ensure barcode uniqueness on save
+			$barcodes = array();
+			$barcodes[] = $a3['base']['model']['#value'];
+			if(!empty($a3['field_prod_unit_barcode'][0]['#value']['value'])) {
+				$barcodes[] = $a3['field_prod_unit_barcode'][0]['#value']['value'];
+			}
+
+			foreach($a3['field_additional_barcodes'] as $key => $field) {
+				if(is_int($key) && !empty($field['#value']['value'])) {
+					$barcodes[] = $field['#value']['value'];	
+				}
+			}
+
+			$nids = ggw_product_edit_get_barcode_nids($node->nid, $barcodes);
+			$error = '';
+			if(count($nids) > 0) {
+				foreach($nids as $nid) {
+					$title = check_plain(db_result(db_query('SELECT title FROM {node} WHERE nid = %d', $nid)));
+					$error .= 'Barcode re-use detected on item: '.l($title, 'node/'.$nid)."<br />";
+				}
+
+				form_set_error('model', $error);
+				form_set_error('field_prod_unit_barcode', 'Please check unit barcode for duplicates.');
+				form_set_error('field_additional_barcodes', 'Please check additional barcode for duplicates.');
+							return;
+			}
+
+			//Label printing
 			if($a3['label_print']['push_product']['#value']) {
 				drupal_set_message("Item was sent to label print queue.");
 				db_query("INSERT INTO {ggw_product_label_queue} (product_nid) VALUES ('%d')", $node->nid);
 			}
 
-			drupal_add_css(drupal_get_path('module', 'ggw_product_edit').'/css/ggw_profile_edit.css');
-
+			//Product Vendor Sub-system
 			$base_query = "INSERT INTO {ggw_product_vendors} VALUES (%d, %d)";
 
 			if(count($a3['vendors']['supplier']['#value']) > 1 && isset($a3['vendors']['supplier']['#value']["0"])) {
