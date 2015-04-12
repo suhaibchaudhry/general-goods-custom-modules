@@ -120,6 +120,15 @@ function user_term_credits_menu() {
     'file' => 'includes/payment_history.inc'
   );
 
+  $items['admin/store/reports/category-sales'] = array(
+   	'title' => t('Category Sales Report'),
+   	'description' => t('Get category based pos sales report.'),
+   	'page callback' => '_pos_api_expose_category_report',
+   	'access arguments' => array('access site reports'),
+   	'type' => MENU_NORMAL_ITEM,
+   	'file' => 'includes/payment_history.inc'
+  );
+
   return $items;
 }
 

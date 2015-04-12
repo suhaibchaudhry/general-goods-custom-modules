@@ -915,3 +915,87 @@ function full_utc_customer_activity_report() {
 
 	return $content;
 }
+
+function _pos_api_expose_category_report() {
+	drupal_add_css(drupal_get_path('module', 'ggw_state_reporting').'/css/sales_report_form.css');
+	drupal_add_css(drupal_get_path('module', 'ggw_qr_codes').'/css/ggw_qr_codes.css');
+
+	$content .= drupal_get_form('user_term_credits_date_range_form', 2592000);
+
+	if($_GET['start_date']) {
+		$date = strtotime($_GET['start_date']['date'].' '.$_GET['start_date']['time']);
+	} else {
+		$timestamp = time()-2592000;
+		$date = mktime(7, 0, 0, date("n", $timestamp), date("j", $timestamp), date("Y", $timestamp));
+	}
+
+	if($_GET['end_date']) {
+		$end_date = strtotime($_GET['end_date']['date'].' '.$_GET['end_date']['time']);
+	} else {
+		$end_date = mktime(22, 0, 0);
+	}
+
+	$tree = taxonomy_get_tree(7, 0, -1, 1);
+	$content .= '<div class="qr-by-dept" style="white-space: pre;">';
+	$content .= '<strong>'.ggw_state_reporting_msa_cell('Category', 100);
+    $content .= ggw_state_reporting_msa_cell('Total Sales Amount', 40);
+    $content .= ggw_state_reporting_msa_cell('Total G/P', 40);
+    $content .= ggw_state_reporting_msa_cell('Product Cost', 40);
+    $content .= ggw_state_reporting_msa_cell('Margin', 40).'</strong>';
+	$content .= _pos_api_expose_category_report_tree($tree, $start_date, $end_date).'</div>';
+
+	return $content;
+}
+
+function _pos_api_expose_category_report_tree($tree, $start_date, $end_date) {
+    if (count($tree)) {
+        $output = '<ul class="taxonomy-tree" style="margin: 0;">';
+        foreach ($tree as $term) {
+            $output .= '<li class="taxonomy-term">';
+
+            $stats = _pos_api_expose_get_cat_stats($term->tid, $start_date, $end_date);
+
+            if($stats->sales) {
+            	$price = number_format($stats->sales, 2);
+			} else {
+				$price = '';
+			}
+
+	        $gross = $stats->sales-$stats->costs ? number_format($stats->sales-$stats->costs, 2) : '';
+
+            if($stats->costs) {
+	            $cost = number_format($stats->costs, 2);
+        	} else {
+        		$cost = '';
+        	}
+
+            if($stats->sales) {
+            	$markup = number_format(100+(100-($stats->costs*100))/$stats->sales, 2).'%';
+        	} else {
+        		$markup = '';
+        	}
+
+
+            $output .= ggw_state_reporting_msa_cell($term->name, 100);
+            $output .= ggw_state_reporting_msa_cell($price, 40);
+            $output .= ggw_state_reporting_msa_cell($gross, 40);
+            $output .= ggw_state_reporting_msa_cell($cost, 40);
+            $output .= ggw_state_reporting_msa_cell($markup, 40);
+
+            $term->children = taxonomy_get_children($term->tid);
+                        if ($term->children) {
+                                $output .= _pos_api_expose_category_report_tree($term->children, $start_date, $end_date);
+            }
+            $output .= '</li>';
+        }
+        $output .= '</ul>';
+    }
+    return $output;
+}
+
+function _pos_api_expose_get_cat_stats($tid, $start_date, $end_date) {
+	return db_fetch_object(db_query("SELECT SUM(qty*price) AS sales, SUM(qty*cost) AS costs FROM uc_order_products uop
+		INNER JOIN uc_orders uo ON uo.order_id = uop.order_id
+		INNER JOIN term_node tn ON tn.nid = uop.nid
+		WHERE uo.order_status = 'pos_completed' AND tn.tid = '%d' AND uo.modified >= '%s' AND uo.modified <= '%s'", $tid, $start_date, $end_date));
+}
