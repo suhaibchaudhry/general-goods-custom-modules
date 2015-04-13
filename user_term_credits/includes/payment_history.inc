@@ -950,11 +950,11 @@ function _pos_api_expose_category_report() {
     $content .= ggw_state_reporting_msa_cell('Margin', 30).'</strong>';
 	$content .= _pos_api_expose_category_report_tree($tree, $start_date, $end_date, $tsales, $tgross, $tcost, $t, $tper);
 
-	$content .= ggw_state_reporting_msa_cell('Total', 50);
+	$content .= '<strong>'.ggw_state_reporting_msa_cell('Total', 50);
     $content .= ggw_state_reporting_msa_cell(number_format($tsales, 2), 30);
     $content .= ggw_state_reporting_msa_cell(number_format($tgross, 2), 30);
     $content .= ggw_state_reporting_msa_cell(number_format($tcost, 2), 30);
-    $content .= ggw_state_reporting_msa_cell(number_format($tper/$t, 2).'%', 30).'</div>';
+    $content .= ggw_state_reporting_msa_cell(number_format($tper/$t, 2).'%', 30).'</strong></div>';
 
 	return $content;
 }
