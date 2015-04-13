@@ -920,6 +920,12 @@ function _pos_api_expose_category_report() {
 	drupal_add_css(drupal_get_path('module', 'ggw_state_reporting').'/css/sales_report_form.css');
 	drupal_add_css(drupal_get_path('module', 'ggw_qr_codes').'/css/ggw_qr_codes.css');
 
+	$tsales = 0;
+	$tgross = 0;
+	$tcost = 0;
+	$t = 0;
+	$tper = 0;
+
 	$content .= drupal_get_form('user_term_credits_date_range_form', 2592000);
 
 	if($_GET['start_date']) {
@@ -936,18 +942,24 @@ function _pos_api_expose_category_report() {
 	}
 
 	$tree = taxonomy_get_tree(7, 0, -1, 1);
-	$content .= '<div class="qr-by-dept" style="white-space: pre;">';
-	$content .= '<strong>'.ggw_state_reporting_msa_cell('Category', 100);
-    $content .= ggw_state_reporting_msa_cell('Total Sales Amount', 40);
-    $content .= ggw_state_reporting_msa_cell('Total G/P', 40);
-    $content .= ggw_state_reporting_msa_cell('Product Cost', 40);
-    $content .= ggw_state_reporting_msa_cell('Margin', 40).'</strong>';
-	$content .= _pos_api_expose_category_report_tree($tree, $start_date, $end_date).'</div>';
+	$content .= '<div class="qr-by-dept" style="white-space: pre; font-family: monospace;">';
+	$content .= '<strong>'.ggw_state_reporting_msa_cell('Category', 50);
+    $content .= ggw_state_reporting_msa_cell('Total Sales Amount', 30);
+    $content .= ggw_state_reporting_msa_cell('Total G/P', 30);
+    $content .= ggw_state_reporting_msa_cell('Product Cost', 30);
+    $content .= ggw_state_reporting_msa_cell('Margin', 30).'</strong>';
+	$content .= _pos_api_expose_category_report_tree($tree, $start_date, $end_date, $tsales, $tgross, $tcost, $t, $tper);
+
+	$content .= ggw_state_reporting_msa_cell('Total', 50);
+    $content .= ggw_state_reporting_msa_cell(number_format($tsales, 2), 30);
+    $content .= ggw_state_reporting_msa_cell(number_format($tgross, 2), 30);
+    $content .= ggw_state_reporting_msa_cell(number_format($tcost, 2), 30);
+    $content .= ggw_state_reporting_msa_cell(number_format($tper/$t, 2).'%', 30).'</div>';
 
 	return $content;
 }
 
-function _pos_api_expose_category_report_tree($tree, $start_date, $end_date) {
+function _pos_api_expose_category_report_tree($tree, $start_date, $end_date, &$tsales, &$tgross, &$tcost, &$t, &$tper) {
     if (count($tree)) {
         $output = '<ul class="taxonomy-tree" style="margin: 0;">';
         foreach ($tree as $term) {
@@ -957,39 +969,51 @@ function _pos_api_expose_category_report_tree($tree, $start_date, $end_date) {
 
             if($stats->sales) {
             	$price = number_format($stats->sales, 2);
+            	$tsales += $stats->sales;
 			} else {
 				$price = '';
 			}
 
-	        $gross = $stats->sales-$stats->costs ? number_format($stats->sales-$stats->costs, 2) : '';
+			$gcost = $stats->sales-$stats->costs;
+			if($gcost) {
+				$gross = number_format($gcost, 2);
+				$tgross += $gcost;
+			} else {
+				$gross = '';
+			}
 
             if($stats->costs) {
 	            $cost = number_format($stats->costs, 2);
+	            $tcost += $stats->costs;
         	} else {
         		$cost = '';
         	}
 
             if($stats->sales) {
-            	$markup = number_format(100+(100-($stats->costs*100))/$stats->sales, 2).'%';
+            	$t++;
+            	$percentage = 100+(100-($stats->costs*100))/$stats->sales;
+            	$tper += $percentage;
+            	$markup = number_format($percentage, 2).'%';
         	} else {
         		$markup = '';
         	}
 
 
-            $output .= ggw_state_reporting_msa_cell($term->name, 100);
-            $output .= ggw_state_reporting_msa_cell($price, 40);
-            $output .= ggw_state_reporting_msa_cell($gross, 40);
-            $output .= ggw_state_reporting_msa_cell($cost, 40);
-            $output .= ggw_state_reporting_msa_cell($markup, 40);
+            $output .= ggw_state_reporting_msa_cell($term->name, 50);
+            $output .= ggw_state_reporting_msa_cell($price, 30);
+            $output .= ggw_state_reporting_msa_cell($gross, 30);
+            $output .= ggw_state_reporting_msa_cell($cost, 30);
+            $output .= ggw_state_reporting_msa_cell($markup, 30);
 
             $term->children = taxonomy_get_children($term->tid);
                         if ($term->children) {
-                                $output .= _pos_api_expose_category_report_tree($term->children, $start_date, $end_date);
+                                $output .= _pos_api_expose_category_report_tree($term->children, $start_date, $end_date, $tsales, $tgross, $tcost, $t, $tper);
             }
             $output .= '</li>';
         }
         $output .= '</ul>';
     }
+
     return $output;
 }
 
