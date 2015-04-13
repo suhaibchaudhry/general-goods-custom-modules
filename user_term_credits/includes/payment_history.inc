@@ -823,7 +823,7 @@ function full_utc_customer_activity_report() {
 
 	$customers = db_query($sql, $end_date);
 
-	$header = array('Customer', 'Phone #', 'Previous Balance', 'Receipt', 'Payment', 'Current Balance', 'Tax Amount');
+	$header = array('Customer', 'Phone #', 'Previous Balance', 'Receipt', 'Payment', 'Current Balance', 'Tax Amount', 'In Current', 'In-30', 'In-60', 'In-90', 'In-120', '120+');
 	$rows = array();
 	$total_previous = '0';
 	$total_receipt = '0';
@@ -888,6 +888,60 @@ function full_utc_customer_activity_report() {
 			$tax_amount = '';
 		}
 
+		//Start Aging Summary Code
+		$transaction_bucket = array();
+		$invoices = db_query("SELECT tl.pid, tl.timestamp, tl.credit_usage_id, tl.ticket_id, cu.credit_amount AS amount, tl.amount as full_amount, cu.due_date, cu.settled
+					 			FROM {pos_api_expose_transaction_log} tl
+					 			LEFT JOIN user_term_credits_usages cu ON tl.credit_usage_id = cu.cuid 
+					 			WHERE tl.timestamp >= '%s' AND tl.timestamp <= '%s' AND tl.cuid = '%d'", $date, $end_date, $customer->customer_uid);
+
+		while($invoice = db_fetch_object($invoices)) {
+			$transaction_bucket[] = array(
+				'type' => 'invoice',
+				'timestamp' => $invoice->timestamp,
+				'full_amount' => $invoice->full_amount,
+				'amount' => $invoice->amount,
+				'invoice_id' => $invoice->pid,
+				'ticket_id' => $invoice->ticket_id,
+				'cuid' => $invoice->credit_usage_id,
+				'settled' => $invoice->settled,
+				'due_date' => $invoice->due_date
+			);
+		}
+
+		$aging_summaries = array(0, 0, 0, 0, 0, 0);
+
+		foreach($transaction_bucket as $transaction) {
+			if($transaction['type'] == 'invoice') {
+				if($transaction['settled'] == '0') {
+					$date_diff = (time()-$transaction['due_date']);
+					if($date_diff < 0) {
+						$index = 0;
+					} else {
+						$days = floor($date_diff/(60*60*24));
+						if($days >= 0 && $days <= 30) {
+							$index = 1;
+						} elseif ($days > 30 && $days <= 60) {
+							$index = 2;
+						} elseif ($days > 60 && $days <= 90) {
+							$index = 3;
+						} elseif ($days > 90 && $days <= 120) {
+							$index = 4;
+						} elseif ($days > 120) {
+							$index = 5;
+						}
+					}
+
+					$remaining = db_result(db_query("SELECT (cu.credit_amount-IFNULL(pre.paid, 0)) AS balance FROM user_term_credits_usages cu
+		                  LEFT JOIN (SELECT cuid, SUM(settlement_amount) AS paid FROM user_term_credits_settlements GROUP BY cuid) pre ON cu.cuid = pre.cuid
+						  WHERE cu.cuid = '%d'", $transaction['cuid']));
+
+					$aging_summaries[$index] += $remaining;
+				}
+			}
+		}
+		//End Aging Summary Code
+
 		if($display_flag) {
 			$rows[] = array(
 				$profile->name.'- '.substr($profile->title, 0, 24),
@@ -896,7 +950,13 @@ function full_utc_customer_activity_report() {
 				$receipt_amount,
 				$payment_amount,
 				substr($end_account->pending_payments_view, 1),
-				$tax_amount
+				$tax_amount,
+				uc_currency_format(user_term_credits_recursive_round($aging_summaries[0]), false),
+				uc_currency_format(user_term_credits_recursive_round($aging_summaries[1]), false),
+				uc_currency_format(user_term_credits_recursive_round($aging_summaries[2]), false),
+				uc_currency_format(user_term_credits_recursive_round($aging_summaries[3]), false),
+				uc_currency_format(user_term_credits_recursive_round($aging_summaries[4]), false),
+				uc_currency_format(user_term_credits_recursive_round($aging_summaries[5]), false)
 			);
 		}
 	}
@@ -908,7 +968,13 @@ function full_utc_customer_activity_report() {
 		'<strong>'.uc_currency_format(user_term_credits_recursive_round($total_receipt), false).'</strong>',
 		'<strong>'.uc_currency_format(user_term_credits_recursive_round($total_payment), false).'</strong>',
 		'<strong>'.uc_currency_format(user_term_credits_recursive_round($current_outstanding), false).'</strong>',
-		'<strong>'.uc_currency_format(user_term_credits_recursive_round($total_tax), false).'</strong>'
+		'<strong>'.uc_currency_format(user_term_credits_recursive_round($total_tax), false).'</strong>',
+		'',
+		'',
+		'',
+		'',
+		'',
+		''
 	);
 
 	$content .= theme('table', $header, $rows);
