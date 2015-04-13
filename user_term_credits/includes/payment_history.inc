@@ -830,6 +830,7 @@ function full_utc_customer_activity_report() {
 	$total_payment = '0';
 	$current_outstanding = '0';
 	$total_tax = '0';
+	$total_aging_summaries = array(0, 0, 0, 0, 0, 0);
 
 	while($customer = db_fetch_object($customers)) {
 		$display_flag = false;
@@ -937,6 +938,7 @@ function full_utc_customer_activity_report() {
 						  WHERE cu.cuid = '%d'", $transaction['cuid']));
 
 					$aging_summaries[$index] += $remaining;
+					$total_aging_summaries[$index] += $remaining;
 				}
 			}
 		}
@@ -969,12 +971,12 @@ function full_utc_customer_activity_report() {
 		'<strong>'.uc_currency_format(user_term_credits_recursive_round($total_payment), false).'</strong>',
 		'<strong>'.uc_currency_format(user_term_credits_recursive_round($current_outstanding), false).'</strong>',
 		'<strong>'.uc_currency_format(user_term_credits_recursive_round($total_tax), false).'</strong>',
-		'',
-		'',
-		'',
-		'',
-		'',
-		''
+		'<strong>'.uc_currency_format(user_term_credits_recursive_round($total_aging_summaries[0]), false).'</strong>',
+		'<strong>'.uc_currency_format(user_term_credits_recursive_round($total_aging_summaries[1]), false).'</strong>',
+		'<strong>'.uc_currency_format(user_term_credits_recursive_round($total_aging_summaries[2]), false).'</strong>',
+		'<strong>'.uc_currency_format(user_term_credits_recursive_round($total_aging_summaries[3]), false).'</strong>',
+		'<strong>'.uc_currency_format(user_term_credits_recursive_round($total_aging_summaries[4]), false).'</strong>',
+		'<strong>'.uc_currency_format(user_term_credits_recursive_round($total_aging_summaries[5]), false).'</strong>'
 	);
 
 	$content .= theme('table', $header, $rows);
