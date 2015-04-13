@@ -894,7 +894,7 @@ function full_utc_customer_activity_report() {
 		$invoices = db_query("SELECT tl.pid, tl.timestamp, tl.credit_usage_id, tl.ticket_id, cu.credit_amount AS amount, tl.amount as full_amount, cu.due_date, cu.settled
 					 			FROM {pos_api_expose_transaction_log} tl
 					 			LEFT JOIN user_term_credits_usages cu ON tl.credit_usage_id = cu.cuid 
-					 			WHERE tl.timestamp >= '%s' AND tl.timestamp <= '%s' AND tl.cuid = '%d'", $date, $end_date, $customer->customer_uid);
+					 			WHERE tl.timestamp <= '%s' AND tl.cuid = '%d'", $end_date, $customer->customer_uid);
 
 		while($invoice = db_fetch_object($invoices)) {
 			$transaction_bucket[] = array(
@@ -928,7 +928,7 @@ function full_utc_customer_activity_report() {
 							$index = 3;
 						} elseif ($days > 90 && $days <= 120) {
 							$index = 4;
-						} elseif ($days > 120) {
+						} else {
 							$index = 5;
 						}
 					}
