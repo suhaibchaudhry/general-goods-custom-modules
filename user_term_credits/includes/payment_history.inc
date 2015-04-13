@@ -988,9 +988,9 @@ function _pos_api_expose_category_report() {
 	drupal_add_css(drupal_get_path('module', 'ggw_state_reporting').'/css/sales_report_form.css');
 	drupal_add_css(drupal_get_path('module', 'ggw_qr_codes').'/css/ggw_qr_codes.css');
 
-	$tsales = 0;
-	$tgross = 0;
-	$tcost = 0;
+	//$tsales = 0;
+	//$tgross = 0;
+	//$tcost = 0;
 
 	$content .= drupal_get_form('user_term_credits_date_range_form', 2592000);
 
@@ -1014,18 +1014,21 @@ function _pos_api_expose_category_report() {
     $content .= ggw_state_reporting_msa_cell('Total G/P', 30);
     $content .= ggw_state_reporting_msa_cell('Product Cost', 30);
     $content .= ggw_state_reporting_msa_cell('Margin', 30).'</strong>';
-	$content .= _pos_api_expose_category_report_tree($tree, $start_date, $end_date, $tsales, $tgross, $tcost);
+	$content .= _pos_api_expose_category_report_tree($tree, $date, $end_date);
 
 	$content .= '<strong>'.ggw_state_reporting_msa_cell('Total', 50);
-    $content .= ggw_state_reporting_msa_cell(number_format($tsales, 2), 30);
-    $content .= ggw_state_reporting_msa_cell(number_format($tgross, 2), 30);
-    $content .= ggw_state_reporting_msa_cell(number_format($tcost, 2), 30);
-    $content .= ggw_state_reporting_msa_cell(number_format(100-(($tcost*100)/$tsales), 2).'%', 30).'</strong></div>';
+	$total_stats = _pos_api_expose_get_total_stats($date, $end_date);
+    $content .= ggw_state_reporting_msa_cell(number_format($total_stats->sales, 2), 30);
+    $content .= ggw_state_reporting_msa_cell(number_format($total_stats->sales-$total_stats->costs, 2), 30);
+    $content .= ggw_state_reporting_msa_cell(number_format($total_stats->costs, 2), 30);
+    $content .= ggw_state_reporting_msa_cell(number_format(100-(($total_stats->costs*100)/$total_stats->sales), 2).'%', 30);
+
+	$content .= '</strong></div>';
 
 	return $content;
 }
 
-function _pos_api_expose_category_report_tree($tree, $start_date, $end_date, &$tsales, &$tgross, &$tcost) {
+function _pos_api_expose_category_report_tree($tree, $start_date, $end_date) {
     if (count($tree)) {
         $output = '<ul class="taxonomy-tree" style="margin: 0;">';
         foreach ($tree as $term) {
@@ -1035,7 +1038,6 @@ function _pos_api_expose_category_report_tree($tree, $start_date, $end_date, &$t
 
             if($stats->sales) {
             	$price = number_format($stats->sales, 2);
-            	$tsales += $stats->sales;
 			} else {
 				$price = '';
 			}
@@ -1073,7 +1075,7 @@ function _pos_api_expose_category_report_tree($tree, $start_date, $end_date, &$t
 
             $term->children = taxonomy_get_children($term->tid);
                         if ($term->children) {
-                                $output .= _pos_api_expose_category_report_tree($term->children, $start_date, $end_date, $tsales, $tgross, $tcost);
+                                $output .= _pos_api_expose_category_report_tree($term->children, $start_date, $end_date);
             }
             $output .= '</li>';
         }
@@ -1087,5 +1089,13 @@ function _pos_api_expose_get_cat_stats($tid, $start_date, $end_date) {
 	return db_fetch_object(db_query("SELECT SUM(qty*price) AS sales, SUM(qty*cost) AS costs FROM uc_order_products uop
 		INNER JOIN uc_orders uo ON uo.order_id = uop.order_id
 		INNER JOIN term_node tn ON tn.nid = uop.nid
-		WHERE uo.order_status = 'pos_completed' AND tn.tid = '%d' AND uo.modified >= '%s' AND uo.modified <= '%s'", $tid, $start_date, $end_date));
+		INNER JOIN pos_api_expose_transaction_log tl ON tl.ticket_id = uo.order_id
+		WHERE uo.order_status = 'pos_completed' AND tn.tid = '%d' AND tl.timestamp >= '%s' AND tl.timestamp <= '%s'", $tid, $start_date, $end_date));
+}
+
+function _pos_api_expose_get_total_stats($start_date, $end_date) {
+	return db_fetch_object(db_query("SELECT SUM(qty*price) AS sales, SUM(qty*cost) AS costs FROM uc_order_products uop
+		INNER JOIN uc_orders uo ON uo.order_id = uop.order_id
+		INNER JOIN pos_api_expose_transaction_log tl ON tl.ticket_id = uo.order_id
+		WHERE uo.order_status = 'pos_completed' AND tl.timestamp >= '%s' AND tl.timestamp <= '%s'", $start_date, $end_date));
 }
